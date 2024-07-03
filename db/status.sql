@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS status ("statusId" TEXT, "status" TEXT);
+CREATE TABLE IF NOT EXISTS status ("statusId" TEXT PRIMARY KEY AUTOINCREMENT, "status" TEXT);
 INSERT INTO status (statusId, status) VALUES ('1', 'Finished');
 INSERT INTO status (statusId, status) VALUES ('2', 'Disqualified');
 INSERT INTO status (statusId, status) VALUES ('3', 'Accident');

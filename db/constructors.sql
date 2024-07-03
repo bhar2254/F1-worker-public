@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS constructors ("constructorId" TEXT, "constructorRef" TEXT, "name" TEXT, "nationality" TEXT, "url" TEXT);
+CREATE TABLE IF NOT EXISTS constructors ("constructorId" TEXT PRIMARY KEY AUTOINCREMENT, "constructorRef" TEXT, "name" TEXT, "nationality" TEXT, "url" TEXT);
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('1', 'mclaren', 'McLaren', 'British', 'http://en.wikipedia.org/wiki/McLaren');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('2', 'bmw_sauber', 'BMW Sauber', 'German', 'http://en.wikipedia.org/wiki/BMW_Sauber');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('3', 'williams', 'Williams', 'British', 'http://en.wikipedia.org/wiki/Williams_Grand_Prix_Engineering');
