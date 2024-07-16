@@ -6,14 +6,17 @@
 //  Import modules
 import { rawHtmlResponse } from './std'
 import { nationToIso2, iso3To2 } from './flag'
-import { Page } from './dom'
+import { Card, Form, Page } from './dom'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { FetchAPI } from './fetchAPI'
 import { extractRaceClassification } from './wikiParse'
+import { SQLCrud } from './sql-d1'
 
 const version = '0.0.0'
 const api_version = 'v1'
+const minimum_year = 2023
+const current_year = 2024
 
 var ENV = {
 	version: version,
@@ -51,9 +54,12 @@ var ENV = {
 		},{
 			text: 'Meetings',
 			link: `/api/${api_version}/meetings`
-		},{
+		}, {
 			text: 'Sessions',
 			link: `/api/${api_version}/sessions`
+		}, {
+			text: 'Export',
+			link: `/api/${api_version}/export`
 		}],
 	}]
 }
@@ -74,7 +80,8 @@ const applyCSSTheme = (scheme, options = {}) => {
 	}	
 	const hexToRBG = (hex) => {
 		// Ensure the hex code is exactly 2 digits
-		if (hex.length !== 6) {
+		const _hex = hex || []
+		if (_hex.length !== 6) {
 			throw new Error('Invalid hex color format. It should be 6 digits.');
 		}
 		let output = parseInt(hex, 16)
@@ -376,33 +383,16 @@ app.get(`/drivers/championship/:year`, async c => {
 	// Access the D1 database bound to this Worker
 	const db = c.env.DB
 	const year = c.req.param('year')
-	const { results } = await db.prepare(`SELECT 
-			driver_standings.*,
-			drivers.surname,
-			drivers.forename,
-			drivers.nationality,
-			drivers.forename || ' ' || drivers.surname AS full_name,
-			drivers.code,
-			drivers.number,
-			races.year,
-			races.round,
-			teams.team_name,
-			teams.primary_color,
-			teams.secondary_color,
-			teams.ternary_color
-		FROM 
-			driver_standings
-		JOIN 
-			drivers ON driver_standings.driverId = drivers.driverId,
-			races ON driver_standings.raceId = races.raceId
-		LEFT JOIN
-			teams ON driver_standings.teamId = teams.teamId
-		WHERE 
-			races.year = ${year}
-		ORDER BY 
-			CAST(driver_standings.raceId AS INTEGER) DESC,
-			CAST(driver_standings.position AS INTEGER) ASC;`).all()
-
+	const SQLTable = new SQLCrud(db, 'driver_standings')
+	const { results } = await SQLTable.read({
+		columns: ['driver_standings.*','drivers.surname','drivers.forename','drivers.nationality',`drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number', 
+			'races.year', 'races.round',
+			'teams.team_name', 'teams.primary_color', 'teams.secondary_color', 'teams.ternary_color'
+		],
+		join: ['JOIN drivers ON driver_standings.driverId = drivers.driverId, races ON driver_standings.raceId = races.raceId LEFT JOIN teams ON driver_standings.teamId = teams.teamId'],
+		where: `races.year = ${ year }`,
+		orderBy: ['CAST(driver_standings.raceId AS INTEGER) DESC', 'CAST(driver_standings.position AS INTEGER) ASC']
+	})
 	let body = '<div class="row g-4">'
 	let index = 1
 	let processedDrivers = []
@@ -417,37 +407,30 @@ app.get(`/drivers/championship/:year`, async c => {
 		const primary_color = driver_d1_data.primary_color || '000000'
 		const text_color = primary_color < '555555' ? 'white' : 'black'
 		const col_width = index > 3 ? 'col-lg-3 col-md-4 col-sm-12' : 'col-lg-4 col-md-6 col-sm-12'
-		body += `
-			<div class="${col_width} mx-auto">
-				<div class="card">
-					<div class='card-header text-center'>
-						<div class='col-12 float-start'>
-							${first_name} <strong>${last_name.toUpperCase()}</strong>
-						</div>
-						<div class='col-12 float-end'>
-							<img src="https://flagsapi.com/${nationToIso2(driver_d1_data.nationality)}/flat/32.png"/>
-						</div>
+		const cardData = {
+			header: `<div class='col-12 float-start'>
+						${first_name} <strong>${last_name.toUpperCase()}</strong>
 					</div>
-					<div class="card-body">
-						<div class="row g-4">
-							<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-6'>
-								<a href="/drivers/profile/${first_name.toLowerCase()}-${last_name.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${first_name} ${last_name} headshot' alt='${first_name} ${last_name} headshot' loading='eager' src="https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/${first_name.substring(0,1)}/${driver_img_code}_${first_name}_${last_name}/${driver_img_code.toLowerCase()}.png"></a>
-							</div>
-							<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-6'>
-								<p class='border-top border-bottom py-1 h5 fw-bold' lang='en'>
-									${driver_d1_data.position || 0} | ${driver_d1_data.points || 0}  
-								</p>                                        
-								<a href="/drivers/profile/${first_name.toLowerCase()}-${last_name.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${first_name} ${last_name} headshot' alt='${first_name} ${last_name} headshot' loading='eager' src="https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${driver_img_code}.png"></a>
-							</div>      
-						</div>     
-					</div>          
-					<div class="card-footer">
-						<div class="row text-center">
-							<div class="col-lg-6 col-md-9 p-1 my-3 mx-auto rounded-3" style="color: ${text_color}; background-color:#${primary_color}">${driver_d1_data.team_name || 'Missing'}</div>
+					<div class='col-12 float-end'>
+						<img src="https://flagsapi.com/${nationToIso2(driver_d1_data.nationality)}/flat/32.png"/>
+					</div>`,
+			body: `<div class="row g-4">
+						<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-6'>
+							<a href="/drivers/profile/${first_name.toLowerCase()}-${last_name.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${first_name} ${last_name} headshot' alt='${first_name} ${last_name} headshot' loading='eager' src="https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/${first_name.substring(0, 1)}/${driver_img_code}_${first_name}_${last_name}/${driver_img_code.toLowerCase()}.png"></a>
 						</div>
-					</div>
-				</div>
-			</div>`
+						<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-6'>
+							<p class='border-top border-bottom py-1 h5 fw-bold' lang='en'>
+								${driver_d1_data.position || 0} | ${driver_d1_data.points || 0}  
+							</p>                                        
+							<a href="/drivers/profile/${first_name.toLowerCase()}-${last_name.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${first_name} ${last_name} headshot' alt='${first_name} ${last_name} headshot' loading='eager' src="https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${driver_img_code}.png"></a>
+						</div>      
+					</div>     `,
+			footer: `<div class="row text-center">
+						<div class="col-lg-6 col-md-9 p-1 my-3 mx-auto rounded-3" style="color: ${text_color}; background-color:#${primary_color}">${driver_d1_data.team_name || 'Missing'}</div>
+					</div>`,
+		}
+		const card = new Card(cardData)
+		body += `<div class="${col_width}">${card.render()}</div>`
 		index++
 	}
 	body += '</div>'
@@ -475,39 +458,16 @@ app.get(`/drivers/profile/:identifier`, async c => {
 
 	const db = c.env.DB
 	const year = new Date().getFullYear()
-	const query = `SELECT 
-			driver_standings.*,
-			drivers.surname,
-			drivers.forename,
-			drivers.nationality,
-			drivers.forename || ' ' || drivers.surname AS full_name,
-			drivers.code,
-			drivers.number,
-			races.year,
-			races.date,
-			races.round,
-			races.name,
-			races.time,
-			races.url,
-			teams.team_name,
-			teams.primary_color,
-			teams.secondary_color,
-			teams.ternary_color
-		FROM 
-			driver_standings
-		JOIN 
-			drivers ON driver_standings.driverId = drivers.driverId,
-			races ON driver_standings.raceId = races.raceId
-		LEFT JOIN
-			teams ON driver_standings.teamId = teams.teamId
-		WHERE 
-			${key} = "${value}"
-		ORDER BY 
-			CAST(races.year AS INTEGER) DESC,
-			CAST(driver_standings.raceId AS INTEGER) DESC,
-			CAST(driver_standings.position AS INTEGER) ASC;`
-	const { results } = await db.prepare(query).all()
-
+	const SQLTable = new SQLCrud(db, 'driver_standings')
+	const { results } = await SQLTable.read({
+		columns: ['driver_standings.*','drivers.surname','drivers.forename','drivers.nationality',`drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number', 
+			'races.year', 'races.round', 'races.url', 'races.time', 'races.name', 'races.date',
+			'teams.team_name', 'teams.primary_color', 'teams.secondary_color', 'teams.ternary_color'
+		],
+		join: ['JOIN drivers ON driver_standings.driverId = drivers.driverId, races ON driver_standings.raceId = races.raceId LEFT JOIN teams ON driver_standings.teamId = teams.teamId'],
+		where: `${key} = "${value}"`,
+		orderBy: ['CAST(races.year AS INTEGER) DESC', 'CAST(driver_standings.raceId AS INTEGER) DESC', 'CAST(driver_standings.position AS INTEGER) ASC']
+	})
 	const user_current_data = results[0]
 	const first_name = user_current_data.forename || ''
 	const last_name = user_current_data.surname || ''
@@ -528,6 +488,7 @@ app.get(`/drivers/profile/:identifier`, async c => {
 	}
 	race_results += '</div>'
 	for(const each of results){
+		const { url = '', time = '', position = 0, points = 0 } = each
 		if(previous_year !== each.year){
 			previous_year = each.year
 			race_results += `
@@ -550,11 +511,11 @@ app.get(`/drivers/profile/:identifier`, async c => {
 		}
 		race_results += `
 					<tr>
-						<td><a class="btn f1-team-primary" style="color:#${primary_text_color}" href="/races/race/${each.url.split('/')[4]}">${each.name}</a></td>
+						<td><a class="btn f1-team-primary" style="color:#${primary_text_color}" href="/races/race/${url.split('/')[4]}">${each.name}</a></td>
 						<td>${new Date(each.date).toLocaleDateString()}</td>
-						<td>${each.time.substring(0,5)}</td>
-						<td>${each.position}</td>
-						<td>${each.points}</td>
+						<td>${time.substring(0,5)}</td>
+						<td>${position}</td>
+						<td>${points}</td>
 					</tr>`
 	}
 	race_results += `</tbody>
@@ -612,16 +573,13 @@ app.get(`/races`, async c => {
 app.get(`/races/:year`, async c => {
 	const db = c.env.DB
 	const { year } = c.req.param()
-	const { results } = await db.prepare(`SELECT 
-			*
-		FROM
-			races
-		WHERE 
-			races.year = ${year}
-			AND DATE(date) < DATE('now')
-		ORDER BY 
-			CAST(raceId AS INTEGER) DESC;`).all()
-
+	const SQLTable = new SQLCrud(db, 'driver_standings')
+	const { results } = await SQLTable.read({
+		columns: ["DISTINCT *"],
+		join: ['JOIN drivers ON driver_standings.driverId = drivers.driverId, races ON driver_standings.raceId = races.raceId LEFT JOIN teams ON driver_standings.teamId = teams.teamId'],
+		where: `races.year = ${year} AND DATE(date) < DATE('now')`,
+		orderBy: ['CAST(races.raceId AS INTEGER) DESC']
+	})
 	let race_results = `
 			<table class="table table-striped">
 				<thead class="fw-bold">
@@ -633,7 +591,6 @@ app.get(`/races/:year`, async c => {
 				<tbody>`
 	for(const each of results){
 		const wikiUrl = `https://en.wikipedia.org/w/api.php?action=parse&page=${each.name.replaceAll(" ","_")}&format=json`
-		console.log(wikiUrl)
 		// const fetchWiki = await fetch(wikiUrl)
 		// const jsonData = await fetchWiki.json()
 		race_results += `
@@ -705,6 +662,175 @@ app.get(`/races/:race_name`, async c => {
 // 	API
 // 
 
+//	SQLCrud implementation
+app.get(`/api/${api_version}/create/:table`, async c => {
+	const { table } = c.req.param()
+	const queries = c.req.queries()
+	const sqlTable = new SQLCrud(c.env.DB, table)
+	let response
+	try {
+		response = await sqlTable.create({
+			data: queries,
+		})
+	} catch (error) {
+		return c.body(`Resource create failed: ${error}`, 500, {
+			'X-Message': `Resource create failed!`,
+			'Content-Type': 'text/plain',
+		})
+	}
+	return c.json({ status: 201, data: response })
+})
+
+app.get(`/api/${api_version}/read/:table/:identifier`, async c => {
+	const { table, identifier, value } = c.req.param()
+	const queries = c.req.queries()	// filter
+	const sqlTable = new SQLCrud(c.env.DB, table)
+	let response
+	try {
+		response = await sqlTable.read({
+			where: `${identifier} = "${value}"`,
+		})
+	} catch (error) {
+		return c.body(`Resource read failed: ${error}`, 500, {
+			'X-Message': `Resource update failed!`,
+			'Content-Type': 'text/plain',
+		})
+	}
+	return c.json({ status: 201, data: response })
+})
+
+app.get(`/api/${api_version}/update/:table/:identifier/:value`, async c => {
+	const { table, identifier, value } = c.req.param()
+	const queries = c.req.queries()
+	const sqlTable = new SQLCrud(c.env.DB, table)
+	let response
+	try {
+		response = await sqlTable.update({
+			data: queries,
+			where: `${identifier} = "${value}"`,
+		})
+	} catch (error) {
+		return c.body(`Resource update failed: ${error}`, 500, {
+			'X-Message': `Resource update failed!`,
+			'Content-Type': 'text/plain',
+		})
+	}
+	return c.json({ status: 201, data: response })
+})
+
+app.get(`/api/${api_version}/destroy/:table/:identifier/:value`, async c => {
+	const { table, identifier, value } = c.req.param()
+	const queries = c.req.queries()
+	const sqlTable = new SQLCrud(c.env.DB, table)
+	let response
+	try {
+		response = await sqlTable.delete({
+			data: queries,
+			where: `${identifier} = "${value}"`,
+		})
+	} catch (error) {
+		return c.body(`Resource delete failed: ${error}`, 500, {
+			'X-Message': `Resource delete failed!`,
+			'Content-Type': 'text/plain',
+		})
+	}
+	return c.json({ status: 201, data: response })
+})
+
+app.get(`/api/${api_version}/races/addResults`, async c => {
+	const heading = 'Add Race Results'
+	const currentYear = new Date().getFullYear()
+	const track = {}
+	track.query = `SELECT DISTINCT name FROM races WHERE year = ${currentYear}`
+	track.prepare = await c.env.DB.prepare(track.query).all()
+	track.options = {}
+	for(const row of track.prepare.results){
+		const key = row.name.split(' ')[0]
+		track.options[key] = row.name
+	}
+
+	let fields = [
+		{
+			id: 'race.name',
+			tag: 'select',
+			key: 'race.name',
+			value: c.req.param('race.name') || 'Bahrain',
+			label: 'Race Name',
+			placeholder: 'Name',
+			required: true,
+			options: track.options
+		},
+		{
+			id: 'race.year',
+			tag: 'input',
+			key: 'race.year',
+			type: 'number',
+			value: currentYear,
+			label: 'Year',
+			placeholder: 'Year',
+			required: true,
+		},
+	]
+
+	const drivers = {}
+	drivers.query = `SELECT DISTINCT
+			drivers.driverRef, 
+			drivers.forename, 
+			drivers.surname
+		FROM 
+			driver_standings
+		JOIN 
+			drivers ON driver_standings.driverId = drivers.driverId,
+			races ON driver_standings.raceId = races.raceId
+		WHERE 
+			races.year = ${currentYear}
+		ORDER BY 
+			drivers.surname ASC;`
+	drivers.prepare = await c.env.DB.prepare(drivers.query).all()
+	for(const row of drivers.prepare.results){
+		fields.push({
+			id: `driver_${row.driverRef}`,
+			tag: 'input',
+			key: `drivers_${row.driverRef}_points`,
+			type: 'number',
+			value: `0`,
+			label: `${row.forename} ${row.surname}`,
+			placeholder: '0',
+			required: true,
+		})
+	}
+
+	const addResultForm = new Form({
+		id: 'addResultsForm',
+		method: 'POST',
+		action: `/api/${api_version}/races/addResults`,
+		fields: fields,
+	})
+	const page = new Page({
+		siteTitle: `F1 openAPI`, brand: `Formula 1 OpenAPI`,
+		pageTitle: heading,
+		body: `<h1 class="text-center">${heading}</h1>
+		
+			<div class="text-center mx-auto">
+				${addResultForm.render()}
+			</div>`
+	})
+	return c.html(page.render())
+}) 
+
+const convertBodyToJSON = body => {
+	let response = ''
+	Object.entries(body).forEach( (key, value) => {
+		console.log(`${key}`)
+	})
+	return body
+}
+
+app.post(`/api/${api_version}/races/addResults`, async c => {	
+	const body = await c.req.parseBody()
+	return c.json(convertBodyToJSON(body))
+})
+
 app.get(`/api/${api_version}/drivers/:identifier`, async c => {
 	const { identifier } = c.req.param()
 	let fetchData = {}
@@ -750,7 +876,6 @@ app.get(`/api/${api_version}/drivers/byYear/:year`, async c => {
 	// Access the D1 database bound to this Worker
 	try {
 		const db = c.env.DB
-		console.log(db)
 	} catch {
 		console.log('DB Error')
 	}
@@ -780,6 +905,74 @@ app.get(`/api/${api_version}/drivers/byYear/:year`, async c => {
 	}
 	
 	return c.json( drivers )
+})
+
+const JSONtoCSV = (dataArray) => {
+	const columns = Object.keys(dataArray[0])
+	let body = columns.join(', ')
+	for (const row of dataArray) {
+		let values = []
+		values.push(`${columns.map(col => `${row[col]}`).join(', ')},`);
+		body += `\n${values.join(', ')}`
+	}
+	return body
+}
+
+app.get(`/api/${api_version}/export`, async c => {
+	// Set headers
+	c.header('X-Message', 'Export CSV!')
+	c.header('Content-Type', 'text/csv')
+
+	// Set HTTP status code
+	c.status(201)
+
+	const query = `SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name`
+	const db = c.env.DB
+	const { results } = await db.prepare(query).all()
+
+	// Return the response body
+	const heading = 'Database Tables'
+	const buttons = ['<div class="btn-toolbar" role="group">']
+	const buttonFormatting = t => {
+		const a = t.split('_')
+		const m = a.map(t => String(t).capitalizeFirstChar())
+		return m.join(' ').trim()
+	}
+	results.map(row => buttons.push(`<a class="btn bh-primary my-1 mx-auto" href="/api/${api_version}/export/${row.name}">${buttonFormatting(row.name)}</a>`))
+	buttons.push('</div>')
+	const page = new Page({
+		siteTitle: `F1 openAPI`, brand: `Formula 1 OpenAPI`,
+		pageTitle: heading,
+		body: `<h1 class="text-center">${heading}</h1>
+		
+			<div class="text-center mx-auto">
+				${buttons.join('')}
+			</div>`
+	})
+	return c.html(page.render())
+})
+
+app.get(`/api/${api_version}/export/:table`, async c => {
+	const { page = 0, limit = 50 } = c.req.query()
+	const offset = page * limit
+
+	// Set headers
+	c.header('X-Message', 'Export CSV!')
+	c.header('Content-Type', 'text/csv')
+
+	// Set HTTP status code
+	c.status(201)
+	const { table = 'drivers' } = c.req.param()
+
+	const limitString = limit ? ` LIMIT ${limit} ` : ''
+	const offsetString = offset ? ` OFFSET ${offset} ` : ''
+	const query = `SELECT * FROM ${table}${limitString}${offsetString}`
+	const db = c.env.DB
+	const { results } = await db.prepare(query).all()
+
+	// Return the response body
+	const response = JSONtoCSV(results)
+	return c.body(response)
 })
 
 app.notFound(c => {

@@ -11,7 +11,7 @@ export class FetchAPI {
 			...args
 		}
 	}
-	static async gatherAPI(args) {
+	static async gatherAPI(args = {}) {
 		this.baseURL = args.baseURL || FetchAPI.defaults.baseURL
 		this.endpoint = args.endpoint || FetchAPI.defaults.endpoint
 		this.query = new URLSearchParams(args.query)

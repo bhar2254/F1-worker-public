@@ -93,6 +93,48 @@ export class HtmlElement extends Defaults {
     }
 }
 
+export class Card extends HtmlElement {
+    constructor(args) {
+        super(args)
+        this.addClass('card')
+        const { header = {}, body = {}, footer = {}, options = {}} = args
+        this.header = header
+        this.centered = options.centered ? 'text-center' : ''
+        this.body = body
+        this.footer = footer
+        this.content = `
+            <div class='card-header ${this.centered ? 'text-center' : ''}'>
+                ${this.header}
+            </div>
+            <div class="card-body">
+                ${this.body}
+            </div>          
+            <div class="card-footer">
+                <div class="row ${this.centered ? 'text-center' : ''}">
+                    ${this.footer}
+                </div>
+            </div>`
+    }
+    set header(header) {
+        this._header = String(header)
+    }
+    get header() {
+        return this._header
+    }
+    set body(body) {
+        this._body = String(body)
+    }
+    get body() {
+        return this._body
+    }
+    set footer(footer) {
+        this._footer = String(footer)
+    }
+    get footer() {
+        return this._footer
+    }
+}
+
 export class FormInput extends HtmlElement {
     static fieldWrapper = args => {
         const _args = { ...args }
@@ -106,6 +148,7 @@ export class FormInput extends HtmlElement {
     constructor(args) {
         super(args)
         this.key = args.key || ''
+        this.id = args.id || this.key
         this.tag = args.tag || 'input'
         this.type = args.type || 'text'
         this.label = args.label || 'Field'
@@ -144,18 +187,17 @@ export class FormInput extends HtmlElement {
     render() {
         const fieldTypes = {
             'select': () => {
-                const { id, key, value, label, options } = this
                 let content = `
-                    <label class='border-0' id='${id}_label'>${label}</label>
-                    <select id='${id}_field' name='${key}' class='form-control border' style='cursor:auto;box-sizing:border-box;height:40.5px' type='select'>`
-                for (const { optionsKey, optionsValue } of Object.entries(options)) {
-                    const isActive = optionsValue == value ? ' active' : ''
-                    content += `
-                        <option value='${optionsKey}'${isActive}>${optionsValue}</option>`
-                }
+                    <label class='border-0' id='${this.key}_label'>${this.label}</label>
+                    <select id='${this.key}_field' name='${this.key}' class='form-control border' style='cursor:auto;box-sizing:border-box;height:40.5px' type='select'>`
+                Object.entries(this.options).forEach(([key, value]) => {
+                  const isActive = value == this.value ? ' active' : ''
+                  content += `
+                      <option value='${key}'${isActive}>${value}</option>`
+                })
                 content += `
                     </select>`
-                return FormInput.fieldWrapper({ id: id, content: content })
+                return FormInput.fieldWrapper({ id: this.key, content: content })
             },
             'textarea': () => {
                 const { id, key, value, label, placeholder = '' } = this
@@ -167,12 +209,15 @@ export class FormInput extends HtmlElement {
                 return FormInput.fieldWrapper({ id: id, content: content })
             },
             'input': () => {
-                const { id, key, value = '', label, type, placeholder = '', pattern = '' } = this
+                const { id, key, value = '', label, type, placeholder = '', pattern = 0 } = this
+                const fullPattern = pattern ? ` pattern=${pattern}` : ``
                 let content = `
                     <label class='border-0' id='${id}_label'>${label}</label>
-                    <input id='${id}_field' name='${key}' class='form-control border' style='cursor:auto;box-sizing:border-box;height:40.5px' type='${type}' placeholder='${placeholder}' pattern='${pattern}'>
-                        ${value}
-                    </input>`
+                    <input id='${id}_field' name='${key}' class='form-control border' style='cursor:auto;box-sizing:border-box;height:40.5px' type='${type}' placeholder='${placeholder}' ${fullPattern}'>
+                    <script>
+                        document.getElementById("${id}_field").value = "${value}";
+                    </script>`
+                console.log(`${key} ${value}`)
                 return FormInput.fieldWrapper({ id: id, content: content })
             }
         }
@@ -188,7 +233,7 @@ export class Form extends HtmlElement {
         this.form_html = ''
         this.field_length = this._args.fields ? this._args.fields.length : 0
         this.method = this._args.method || 'GET'
-        this.action = this._args.action || '#'
+        this.action = this._args.action || ''
         this.fields = this._args.fields || []
         delete this._args
     }
@@ -204,6 +249,7 @@ export class Form extends HtmlElement {
             form_html += formInput.render()
         }
         return this.form_html = form_html + `
+                    <button form="${this.id}" type="submit" class="btn bh-primary">Submit</button>
                 </div>
             </form>`
     }
@@ -272,6 +318,34 @@ export class Modal extends HtmlElement {
             </div>
         </div>
         `
+    }
+}
+
+export class Table extends HtmlElement {
+    constructor(args) {
+        super(args)
+        const { data = {} } = args
+        const content = []
+        const header = []
+        content.push('<th>')
+        Object.keys(data[0]).forEach(row => {
+            header.push(row)
+
+            content.push(`
+                <td>${row}</td>
+            `)
+        })
+        content.push('</th>')
+        data.forEach(row => {
+            content.push('<tr>')
+            header.forEach(key => {
+                content.push(`
+                    <td>${row[key]}</td>
+                `)
+            })
+            content.push('</tr>')
+        })
+        this.content = content.join('')
     }
 }
 
