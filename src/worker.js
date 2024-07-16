@@ -678,7 +678,7 @@ app.get(`/api/${api_version}/create/:table`, async c => {
 			'Content-Type': 'text/plain',
 		})
 	}
-	return c.json({ status: 201, data: response })
+	return c.json({ response: { status: 201, ...response } })
 })
 
 app.get(`/api/${api_version}/read/:table/:identifier`, async c => {
@@ -696,7 +696,7 @@ app.get(`/api/${api_version}/read/:table/:identifier`, async c => {
 			'Content-Type': 'text/plain',
 		})
 	}
-	return c.json({ status: 201, data: response })
+	return c.json({ response: { status: 201, ...response } })
 })
 
 app.get(`/api/${api_version}/update/:table/:identifier/:value`, async c => {
@@ -715,7 +715,7 @@ app.get(`/api/${api_version}/update/:table/:identifier/:value`, async c => {
 			'Content-Type': 'text/plain',
 		})
 	}
-	return c.json({ status: 201, data: response })
+	return c.json({ response: { status: 201, ...response } })
 })
 
 app.get(`/api/${api_version}/destroy/:table/:identifier/:value`, async c => {
@@ -734,7 +734,7 @@ app.get(`/api/${api_version}/destroy/:table/:identifier/:value`, async c => {
 			'Content-Type': 'text/plain',
 		})
 	}
-	return c.json({ status: 201, data: response })
+	return c.json({ response: { status: 201, ...response } })
 })
 
 app.get(`/api/${api_version}/races/addResults`, async c => {
