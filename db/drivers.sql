@@ -1,5 +1,5 @@
 DROP TABLE IF EXISTS drivers;
-CREATE TABLE IF NOT EXISTS drivers ("driverId" TEXT PRIMARY KEY AUTOINCREMENT, "driverRef" TEXT, "number" TEXT, "code" TEXT, "forename" TEXT, "surname" TEXT, "dob" TEXT, "nationality" TEXT, "url" TEXT);
+CREATE TABLE IF NOT EXISTS drivers ("driverId" INTEGER PRIMARY KEY AUTOINCREMENT, "driverRef" TEXT, "number" TEXT, "code" TEXT, "forename" TEXT, "surname" TEXT, "dob" TEXT, "nationality" TEXT, "url" TEXT);
 INSERT INTO drivers (driverId, driverRef, number, code, forename, surname, dob, nationality, url) VALUES ('1', 'hamilton', '44', 'HAM', 'Lewis', 'Hamilton', '1985-01-07', 'British', 'http://en.wikipedia.org/wiki/Lewis_Hamilton');
 INSERT INTO drivers (driverId, driverRef, number, code, forename, surname, dob, nationality, url) VALUES ('2', 'heidfeld', '\N', 'HEI', 'Nick', 'Heidfeld', '1977-05-10', 'German', 'http://en.wikipedia.org/wiki/Nick_Heidfeld');
 INSERT INTO drivers (driverId, driverRef, number, code, forename, surname, dob, nationality, url) VALUES ('3', 'rosberg', '6', 'ROS', 'Nico', 'Rosberg', '1985-06-27', 'German', 'http://en.wikipedia.org/wiki/Nico_Rosberg');

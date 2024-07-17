@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS seasons ("year" TEXT PRIMARY KEY AUTOINCREMENT, "url" TEXT);
+CREATE TABLE IF NOT EXISTS seasons ("year" INTEGER PRIMARY KEY AUTOINCREMENT, "url" TEXT);
 INSERT INTO seasons (year, url) VALUES ('2009', 'http://en.wikipedia.org/wiki/2009_Formula_One_season');
 INSERT INTO seasons (year, url) VALUES ('2008', 'http://en.wikipedia.org/wiki/2008_Formula_One_season');
 INSERT INTO seasons (year, url) VALUES ('2007', 'http://en.wikipedia.org/wiki/2007_Formula_One_season');

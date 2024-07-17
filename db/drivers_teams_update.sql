@@ -26,3 +26,4 @@ UPDATE driver_standings SET teamId = 24 WHERE driverId = 30;  -- Mick Schumacher
 UPDATE driver_standings SET teamId = 5 WHERE driverId = 849;  -- Nicholas Latifi
 UPDATE driver_standings SET teamId = 8 WHERE driverId = 8;  -- Kimi RÄIKKÖNEN
 UPDATE driver_standings SET teamId = 24 WHERE driverId = 853;  -- Nikita Mazepan
+UPDATE driver_standings SET teamId = 11 WHERE driverId = 826;  -- Daniil Kvyat

@@ -97,7 +97,7 @@ export class SQLCrud {
     async create(args) {
     //  args.data = { columns: values }
         const query = new SQLQuery('INSERT', this.table, args)
-        return await this.db.exec(query.statement)
+        return await this.db.prepare(query.statement).run()
     }
     async read(args){
         const query = new SQLQuery('SELECT', this.table, args)
@@ -107,10 +107,10 @@ export class SQLCrud {
     async update(args) {
     //  args.data = { columns: values }
         const query = new SQLQuery('UPDATE', this.table, args)
-        return await this.db.exec(query.statement)
+        return await this.db.prepare(query.statement).run()
     }
     async delete(args) {
         const query = new SQLQuery('DELETE', this.table, args)
-        return await this.db.exec(query.statement)
+        return await this.db.prepare(query.statement).run()
     }
 }

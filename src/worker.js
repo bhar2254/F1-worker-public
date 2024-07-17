@@ -573,10 +573,9 @@ app.get(`/races`, async c => {
 app.get(`/races/:year`, async c => {
 	const db = c.env.DB
 	const { year } = c.req.param()
-	const SQLTable = new SQLCrud(db, 'driver_standings')
+	const SQLTable = new SQLCrud(db, 'races')
 	const { results } = await SQLTable.read({
-		columns: ["DISTINCT *"],
-		join: ['JOIN drivers ON driver_standings.driverId = drivers.driverId, races ON driver_standings.raceId = races.raceId LEFT JOIN teams ON driver_standings.teamId = teams.teamId'],
+		columns: ["DISTINCT name, date, time, url"],
 		where: `races.year = ${year} AND DATE(date) < DATE('now')`,
 		orderBy: ['CAST(races.raceId AS INTEGER) DESC']
 	})
@@ -739,15 +738,36 @@ app.get(`/api/${api_version}/destroy/:table/:identifier/:value`, async c => {
 
 app.get(`/api/${api_version}/races/addResults`, async c => {
 	const heading = 'Add Race Results'
-	const currentYear = new Date().getFullYear()
+	const year = new Date().getFullYear()
 	const track = {}
-	track.query = `SELECT DISTINCT name FROM races WHERE year = ${currentYear}`
+	track.query = `SELECT DISTINCT name FROM races WHERE year = ${year}`
 	track.prepare = await c.env.DB.prepare(track.query).all()
 	track.options = {}
 	for(const row of track.prepare.results){
 		const key = row.name.split(' ')[0]
 		track.options[key] = row.name
+	} 
+	
+	function calculateAge(birthday) { // birthday is a date
+		const now = new Date(Date.now()).getFullYear()
+		const birthdate = Number(birthday)
+		return now - birthdate + 1
 	}
+
+	function convertToObj(a, b) {
+		if (a.length != b.length ||
+			a.length == 0 ||
+			b.length == 0) {
+			return null;
+		}
+		let obj = {};
+
+		// Using the foreach method
+		a.forEach((k, i) => { obj[k] = b[i] })
+		return obj;
+	}
+	const n10array = Array.from(Array(calculateAge(1950)).keys()).map(x => x + 1950)	// 1950, first year of F1 racing
+	const n10obj = convertToObj(n10array, n10array)
 
 	let fields = [
 		{
@@ -756,45 +776,53 @@ app.get(`/api/${api_version}/races/addResults`, async c => {
 			key: 'race.name',
 			value: c.req.param('race.name') || 'Bahrain',
 			label: 'Race Name',
-			placeholder: 'Name',
 			required: true,
 			options: track.options
 		},
 		{
 			id: 'race.year',
-			tag: 'input',
+			tag: 'select',
 			key: 'race.year',
-			type: 'number',
-			value: currentYear,
+			value: year,
 			label: 'Year',
-			placeholder: 'Year',
 			required: true,
+			options: n10obj
 		},
 	]
 
 	const drivers = {}
-	drivers.query = `SELECT DISTINCT
+	drivers.query = `
+		SELECT DISTINCT
+			drivers.driverId,
 			drivers.driverRef, 
 			drivers.forename, 
-			drivers.surname
+			drivers.surname,
+			constructors.constructorRef,
+			constructors.name,
+			constructors.constructorId
 		FROM 
-			driver_standings
-		JOIN 
-			drivers ON driver_standings.driverId = drivers.driverId,
-			races ON driver_standings.raceId = races.raceId
+			results
+		LEFT JOIN 
+			drivers ON results.driverId = drivers.driverId,
+			driver_standings ON drivers.driverId = driver_standings.driverId,
+			constructors ON results.constructorId = constructors.constructorId,
+			constructor_standings ON constructors.constructorId = constructor_standings.constructorId,
+			races ON results.raceId = races.raceId
 		WHERE 
-			races.year = ${currentYear}
+			races.year = ${year}
 		ORDER BY 
-			drivers.surname ASC;`
+			drivers.driverId ASC
+		LIMIT 25;`
 	drivers.prepare = await c.env.DB.prepare(drivers.query).all()
-	for(const row of drivers.prepare.results){
+	const { results } = drivers.prepare
+	for(const row of results){
 		fields.push({
 			id: `driver_${row.driverRef}`,
 			tag: 'input',
 			key: `drivers_${row.driverRef}_points`,
 			type: 'number',
 			value: `0`,
-			label: `${row.forename} ${row.surname}`,
+			label: `${row.forename} ${row.surname} (${row.name})`,
 			placeholder: '0',
 			required: true,
 		})
