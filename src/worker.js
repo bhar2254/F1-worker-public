@@ -44,6 +44,9 @@ var ENV = {
 			text: 'Races',
 			link: `/races`
 		},{
+			text: 'Add Race Results',
+			link: `/api/${api_version}/races/addResults`
+		},{
 			text: 'hr',
 		},{
 			text: 'Drivers',
@@ -79,8 +82,12 @@ const applyCSSTheme = (scheme, options = {}) => {
 		return hexColorPattern.test(hex);
 	}	
 	const hexToRBG = (hex) => {
+		console.log(hex)
 		// Ensure the hex code is exactly 2 digits
-		const _hex = hex || []
+		let _hex = hex || []
+		if (_hex.length === 3) {
+			_hex += _hex
+		}
 		if (_hex.length !== 6) {
 			throw new Error('Invalid hex color format. It should be 6 digits.');
 		}
@@ -197,7 +204,7 @@ const applyCSSTheme = (scheme, options = {}) => {
 		return [analogous1, analogous2];
 	}
 	if(options.team_color){
-		const { primary_color, secondary_color, ternary_color } = scheme
+		const { primary_color, secondary_color, tertiary_color } = scheme
 		return `
 			<style>
 			:root{
@@ -205,8 +212,8 @@ const applyCSSTheme = (scheme, options = {}) => {
 				--f1-team-primary-rgb: ${hexToRBG(primary_color)};
 				--f1-team-secondary: #${secondary_color};
 				--f1-team-secondary-rgb: ${hexToRBG(secondary_color)};
-				--f1-team-ternary: #${ternary_color};
-				--f1-team-ternary-rgb: ${hexToRBG(ternary_color)};
+				--f1-team-tertiary: #${tertiary_color};
+				--f1-team-tertiary-rgb: ${hexToRBG(tertiary_color)};
 			}
 			</style>`
 	}
@@ -387,7 +394,7 @@ app.get(`/drivers/championship/:year`, async c => {
 	const { results } = await SQLTable.read({
 		columns: ['driver_standings.*','drivers.surname','drivers.forename','drivers.nationality',`drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number', 
 			'races.year', 'races.round',
-			'teams.team_name', 'teams.primary_color', 'teams.secondary_color', 'teams.ternary_color'
+			'teams.team_name', 'teams.primary_color', 'teams.secondary_color', 'teams.tertiary_color'
 		],
 		join: ['JOIN drivers ON driver_standings.driverId = drivers.driverId, races ON driver_standings.raceId = races.raceId LEFT JOIN teams ON driver_standings.teamId = teams.teamId'],
 		where: `races.year = ${ year }`,
@@ -444,6 +451,7 @@ app.get(`/drivers/championship/:year`, async c => {
 
 app.get(`/drivers/profile/:identifier`, async c => {
 	const identifier = c.req.param('identifier')
+	const year = new Date(Date.now()).getFullYear()
 	let key = ''
 	let value = ''
 	
@@ -456,38 +464,59 @@ app.get(`/drivers/profile/:identifier`, async c => {
 		value = `${splitName[0].capitalizeFirstChar()} ${splitName[1].capitalizeFirstChar()}`
 	}
 
-	const db = c.env.DB
-	const year = new Date().getFullYear()
-	const SQLTable = new SQLCrud(db, 'driver_standings')
-	const { results } = await SQLTable.read({
-		columns: ['driver_standings.*','drivers.surname','drivers.forename','drivers.nationality',`drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number', 
-			'races.year', 'races.round', 'races.url', 'races.time', 'races.name', 'races.date',
-			'teams.team_name', 'teams.primary_color', 'teams.secondary_color', 'teams.ternary_color'
-		],
-		join: ['JOIN drivers ON driver_standings.driverId = drivers.driverId, races ON driver_standings.raceId = races.raceId LEFT JOIN teams ON driver_standings.teamId = teams.teamId'],
+	const driversTable = new SQLCrud(c.env.DB, 'drivers')
+	const driverData = await driversTable.read({
+		columns: ['drivers.surname', 'drivers.forename', 'drivers.nationality', `drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number',
+			'driver_standings.position','driver_standings.points',
+			'constructors.name AS constructor_name', 'constructors.primary_color', 'constructors.secondary_color', 'constructors.tertiary_color'],
+		join: ['LEFT JOIN results ON drivers.driverId = results.driverId, constructors ON results.constructorId = constructors.constructorId, driver_standings ON drivers.driverId = driver_standings.driverId'],
 		where: `${key} = "${value}"`,
-		orderBy: ['CAST(races.year AS INTEGER) DESC', 'CAST(driver_standings.raceId AS INTEGER) DESC', 'CAST(driver_standings.position AS INTEGER) ASC']
+		orderBy: ['results.resultId DESC'],
+		limit: '1'
 	})
-	const user_current_data = results[0]
-	const first_name = user_current_data.forename || ''
-	const last_name = user_current_data.surname || ''
-	const color_scheme = (({primary_color, secondary_color, ternary_color}) => ({primary_color, secondary_color, ternary_color}))(user_current_data)
-	const primary_text_color = color_scheme.primary_color < '555555' ? '#dddddd' : '#333333'
-	const secondary_text_color = color_scheme.secondary_color < '555555' ? '#dddddd' : '#333333'
-	const driver_img_code = `${first_name.substring(0,3).toUpperCase()}${last_name.substring(0,3).toUpperCase()}01`
-	const headshot_url = `https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/${first_name.substring(0,1)}/${driver_img_code}_${first_name}_${last_name}/${driver_img_code.toLowerCase()}.png`
+
+	const profile_data = driverData.results[0]
+	const driver = {
+		forename: profile_data.forename || '',
+		surname: profile_data.surname || '',
+		nationality: profile_data.nationality || 'GBR',
+		position: profile_data.position || 0,
+		points: profile_data.points || 0,
+	}
+	driver.profile_headshot = `https://media.formula1.com/image/upload/f_auto,c_limit,q_75,w_1320/content/dam/fom-website/drivers/${year}Drivers/${driver.surname.toLowerCase()}`
+	driver.headshot = `${driver.forename.substring(0, 3).toUpperCase()}${driver.surname.substring(0, 3).toUpperCase()}01`
+	driver.headshot_url = profile_data.url || `https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/${driver.forename.substring(0, 1)}/${driver.headshot.toUpperCase()}_${driver.forename}_${driver.surname}/${driver.headshot.toLowerCase()}.png`,
+	driver.number_url = `https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${driver.forename.substring(0, 3).toUpperCase()}${driver.surname.substring(0, 3).toUpperCase()}01.png`
+
+	const constructor = {
+		name: profile_data.constructor_name,
+		scheme: (({ primary_color, secondary_color, tertiary_color }) => ({ primary_color, secondary_color, tertiary_color }))(profile_data)
+	}
+	const primary_text_color = constructor.scheme.primary_color < '555555' ? '#dddddd' : '#333333'
+	const secondary_text_color = constructor.scheme.secondary_color < '555555' ? '#dddddd' : '#333333'
+
+	const racesTable = new SQLCrud(c.env.DB, 'results')
+	const racesData = await racesTable.read({
+		columns: ['races.name', 'races.year', 'races.date', 'races.url',
+			'results.number', 'results.position', 'results.positionText', 'results.points', 'results.time', 'results.fastestLap', 'results.fastestLapTime', 'results.rank'
+		],
+		join: ['LEFT JOIN races ON results.raceId = races.raceId'],
+		where: `driverId = "${value}"`,
+		orderBy: ['results.resultId DESC'],
+		limit: '1'
+	})
 
 	let race_results = `<div class="btn-group flex-wrap" role="group">`
 	let previous_year = 0
 	let years_raced = []
-	for(const each of results){
+	for (const each of racesData.results){
 		if(!years_raced.includes(each.year)){
 			years_raced.push(each.year)
 			race_results += `<a href="#${each.year}" type="button" class="btn f1-team-secondary" style="color:${secondary_text_color}">${each.year}</a>`
 		}
 	}
 	race_results += '</div>'
-	for(const each of results){
+	for (const each of racesData.results){
 		const { url = '', time = '', position = 0, points = 0 } = each
 		if(previous_year !== each.year){
 			previous_year = each.year
@@ -527,23 +556,23 @@ app.get(`/drivers/profile/:identifier`, async c => {
 					<div class='card-header text-center'>
 						<div class='col-12'>
 							<h2>
-								${first_name} <strong>${last_name.toUpperCase()}</strong> 
-								<img class="mx-3" src="https://flagsapi.com/${nationToIso2(results[0].nationality)}/flat/64.png"/>
+								${driver.forename} <strong>${driver.surname.toUpperCase()}</strong> 
+								<img class="mx-3" src="https://flagsapi.com/${nationToIso2(driver.nationality)}/flat/64.png"/>
 							</h2>
 						</div>
 					</div>
 					<div class="card-body">
 						<div class="row g-4">
 							<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-8'>
-								<a href="/drivers/profile/${first_name.toLowerCase()}-${last_name.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${first_name} ${last_name} headshot' alt='${first_name} ${last_name} headshot' loading='eager' src="${headshot_url}"></a>
+								<a href="/drivers/profile/${driver.forename.toLowerCase()}-${driver.surname.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${driver.forename} ${driver.surname} headshot' alt='${driver.forename} ${driver.surname} headshot' loading='eager' src="${driver.profile_headshot}"></a>
 							</div>
 							<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-12'>
 								<p class='border-top border-bottom py-1 h5 fw-bold' lang='en'>
-									${results[0].position} | ${results[0].points}
+									${driver.position} | ${driver.points}
 								</p>                                        
-								<a href="/drivers/profile/${first_name.toLowerCase()}-${last_name.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${first_name} ${last_name} headshot' alt='${first_name} ${last_name} headshot' loading='eager' src="https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${first_name.substring(0,3).toUpperCase()}${last_name.substring(0,3).toUpperCase()}01.png"></a>
+								<a href="/drivers/profile/${driver.forename.toLowerCase()}-${driver.surname.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${driver.forename} ${driver.surname} headshot' alt='${driver.forename} ${driver.surname} headshot' loading='eager' src="${driver.number_url}"></a>
 								<div class="row text-center">
-									<div class="col-lg-6 col-md-9 my-3 mx-auto rounded-3 btn f1-team-primary" style="color:#${primary_text_color}">${results[0].team_name}</div>
+									<div class="col-lg-6 col-md-9 my-3 mx-auto rounded-3 btn f1-team-primary" style="color:#${primary_text_color}">${constructor.name}</div>
 								</div>
 							</div>      
 						</div>     
@@ -558,8 +587,8 @@ app.get(`/drivers/profile/:identifier`, async c => {
 		</div>`
 	const page = new Page({
 		siteTitle: `F1 openAPI`, brand: `Formula 1 OpenAPI`,
-		headerOverwrite: _headerDef + applyCSSTheme(color_scheme, {team_color: true}),
-		pageTitle: `${first_name} ${last_name}`, 
+		headerOverwrite: _headerDef + applyCSSTheme(constructor.scheme, {team_color: true}),
+		pageTitle: `${driver.forename} ${driver.forename}`, 
 		body: body
 	})
 	return rawHtmlResponse(page.render())
@@ -849,7 +878,7 @@ app.get(`/api/${api_version}/races/addResults`, async c => {
 const convertBodyToJSON = body => {
 	let response = ''
 	Object.entries(body).forEach( (key, value) => {
-		console.log(`${key}`)
+		// console.log(`${key}`)
 	})
 	return body
 }
@@ -873,10 +902,16 @@ app.get(`/api/${api_version}/drivers/:identifier`, async c => {
 		first_name: splitName[0].capitalizeFirstChar(),
 		last_name: splitName[1].capitalizeFirstChar(),
 	}
-	fetchData = await FetchAPI.gatherAPI({ endpoint:'drivers', query: {...driver_name} })
-
-	const response = fetchData.singleResponse
-	return c.json({ response: response })
+	const SQLTable = new SQLCrud(c.env.DB, 'drivers')
+	const { results } = await SQLTable.read({
+		columns: ['drivers.surname', 'drivers.forename', 'drivers.nationality', `drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number',
+			'constructors.name AS constructor_name', 'constructors.primary_color', 'constructors.secondary_color', 'constructors.tertiary_color'],
+		join: ['LEFT JOIN results ON drivers.driverId = results.driverId, constructors ON results.constructorId = constructors.constructorId'],
+		where: `full_name = "${driver_name.first_name} ${driver_name.last_name}"`,
+		orderBy: ['results.resultId DESC'],
+		limit: '1'
+	})
+	return c.json({ response: results })
 })
 
 for (const [key, value] of Object.entries(FetchAPI.defaults.endpoints)) {

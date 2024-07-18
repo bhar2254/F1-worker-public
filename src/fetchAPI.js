@@ -43,4 +43,10 @@ export class FetchAPI {
 	get endpoint() {
 		return this._endpoint
 	}
+	setDefaults = (args) => {
+		this.defaults = {
+			...this.defaults,
+			...args
+		}
+	}
 }

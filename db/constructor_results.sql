@@ -1,4 +1,11 @@
-CREATE TABLE IF NOT EXISTS constructor_results ("constructorResultsId" INTEGER PRIMARY KEY AUTOINCREMENT, "raceId" TEXT, "constructorId" TEXT, "points" TEXT, "status" TEXT);
+DROP TABLE IF EXISTS constructor_results;
+CREATE TABLE constructor_results (
+    "constructorResultsId" INTEGER PRIMARY KEY AUTOINCREMENT, 
+    "raceId" TEXT, 
+    "constructorId" TEXT, 
+    "points" TEXT, 
+    "status" TEXT
+);
 INSERT INTO constructor_results (constructorResultsId, raceId, constructorId, points, status) VALUES ('1', '18', '1', '14', '\N');
 INSERT INTO constructor_results (constructorResultsId, raceId, constructorId, points, status) VALUES ('2', '18', '2', '8', '\N');
 INSERT INTO constructor_results (constructorResultsId, raceId, constructorId, points, status) VALUES ('3', '18', '3', '9', '\N');

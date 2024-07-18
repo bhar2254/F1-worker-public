@@ -1,19 +1,31 @@
-CREATE TABLE IF NOT EXISTS constructors ("constructorId" INTEGER PRIMARY KEY AUTOINCREMENT, "constructorRef" TEXT, "name" TEXT, "nationality" TEXT, "url" TEXT);
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('1', 'mclaren', 'McLaren', 'British', 'http://en.wikipedia.org/wiki/McLaren');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('2', 'bmw_sauber', 'BMW Sauber', 'German', 'http://en.wikipedia.org/wiki/BMW_Sauber');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('3', 'williams', 'Williams', 'British', 'http://en.wikipedia.org/wiki/Williams_Grand_Prix_Engineering');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('4', 'renault', 'Renault', 'French', 'http://en.wikipedia.org/wiki/Renault_in_Formula_One');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('5', 'toro_rosso', 'Toro Rosso', 'Italian', 'http://en.wikipedia.org/wiki/Scuderia_Toro_Rosso');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('6', 'ferrari', 'Ferrari', 'Italian', 'http://en.wikipedia.org/wiki/Scuderia_Ferrari');
+DROP TABLE IF EXISTS constructors;
+CREATE TABLE constructors (
+    "constructorId" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "constructorRef" TEXT, 
+    "name" TEXT, 
+    "nationality" TEXT, 
+    "url" TEXT,
+    "primary_color" TEXT DEFAULT "FFFFFF",
+    "secondary_color" TEXT DEFAULT "000000",
+    "tertiary_color" TEXT DEFAULT "FFFFFF",
+    "constructors_championships" INTEGER DEFAULT 0,
+    "drivers_championships" INTEGER DEFAULT 0
+);
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('1', 'mclaren', 'McLaren', 'British', 'http://en.wikipedia.org/wiki/McLaren', 'FF8000', '000000', '000000');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('2', 'bmw_sauber', 'BMW Sauber', 'German', 'http://en.wikipedia.org/wiki/BMW_Sauber', '52E252', 'FFFFFF', '000000');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('3', 'williams', 'Williams', 'British', 'http://en.wikipedia.org/wiki/Williams_Grand_Prix_Engineering', '00A0DE', '000000', '000000');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('4', 'renault', 'Renault', 'French', 'http://en.wikipedia.org/wiki/Renault_in_Formula_One', '02192B', '2173B8', 'FFFFFF');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('5', 'toro_rosso', 'Toro Rosso', 'Italian', 'http://en.wikipedia.org/wiki/Scuderia_Toro_Rosso', '00144A', 'EC0742', 'A39064');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('6', 'ferrari', 'Ferrari', 'Italian', 'http://en.wikipedia.org/wiki/Scuderia_Ferrari', 'EF1A2D', 'FFF200', '000000');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('7', 'toyota', 'Toyota', 'Japanese', 'http://en.wikipedia.org/wiki/Toyota_Racing');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('8', 'super_aguri', 'Super Aguri', 'Japanese', 'http://en.wikipedia.org/wiki/Super_Aguri_F1');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('9', 'red_bull', 'Red Bull', 'Austrian', 'http://en.wikipedia.org/wiki/Red_Bull_Racing');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('9', 'red_bull', 'Red Bull', 'Austrian', 'http://en.wikipedia.org/wiki/Red_Bull_Racing', 'EC1845', 'FED502', '8D8F93');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('10', 'force_india', 'Force India', 'Indian', 'http://en.wikipedia.org/wiki/Racing_Point_Force_India');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('11', 'honda', 'Honda', 'Japanese', 'http://en.wikipedia.org/wiki/Honda_Racing_F1');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('12', 'spyker', 'Spyker', 'Dutch', 'http://en.wikipedia.org/wiki/Spyker_F1');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('13', 'mf1', 'MF1', 'Russian', 'http://en.wikipedia.org/wiki/Midland_F1_Racing');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('14', 'spyker_mf1', 'Spyker MF1', 'Dutch', 'http://en.wikipedia.org/wiki/Midland_F1_Racing');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('15', 'sauber', 'Sauber', 'Swiss', 'http://en.wikipedia.org/wiki/Sauber_Motorsport');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('15', 'sauber', 'Sauber', 'Swiss', 'http://en.wikipedia.org/wiki/Sauber_Motorsport', '52E252', 'FFFFFF', '000000');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('16', 'bar', 'BAR', 'British', 'http://en.wikipedia.org/wiki/British_American_Racing');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('17', 'jordan', 'Jordan', 'Irish', 'http://en.wikipedia.org/wiki/Jordan_Grand_Prix');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('18', 'minardi', 'Minardi', 'Italian', 'http://en.wikipedia.org/wiki/Minardi');
@@ -30,7 +42,7 @@ INSERT INTO constructors (constructorId, constructorRef, name, nationality, url)
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('29', 'footwork', 'Footwork', 'British', 'http://en.wikipedia.org/wiki/Footwork_Arrows');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('30', 'pacific', 'Pacific', 'British', 'http://en.wikipedia.org/wiki/Pacific_Racing');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('31', 'simtek', 'Simtek', 'British', 'http://en.wikipedia.org/wiki/Simtek');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('32', 'team_lotus', 'Team Lotus', 'British', 'http://en.wikipedia.org/wiki/Team_Lotus');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('32', 'team_lotus', 'Team Lotus', 'British', 'http://en.wikipedia.org/wiki/Team_Lotus', '231F20', '86995B', '000000');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('33', 'larrousse', 'Larrousse', 'French', 'http://en.wikipedia.org/wiki/Larrousse');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('34', 'brabham', 'Brabham', 'British', 'http://en.wikipedia.org/wiki/Brabham');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('35', 'dallara', 'Dallara', 'Italian', 'http://en.wikipedia.org/wiki/Dallara');
@@ -48,7 +60,7 @@ INSERT INTO constructors (constructorId, constructorRef, name, nationality, url)
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('48', 'rial', 'Rial', 'German', 'http://en.wikipedia.org/wiki/Rial_%28racing_team%29');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('49', 'zakspeed', 'Zakspeed', 'German', 'http://en.wikipedia.org/wiki/Zakspeed');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('50', 'ram', 'RAM', 'British', 'http://en.wikipedia.org/wiki/RAM_Racing');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('51', 'alfa', 'Alfa Romeo', 'Swiss', 'http://en.wikipedia.org/wiki/Alfa_Romeo_in_Formula_One');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('51', 'alfa', 'Alfa Romeo', 'Swiss', 'http://en.wikipedia.org/wiki/Alfa_Romeo_in_Formula_One', '241F21', 'A42134', 'E12319');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('52', 'spirit', 'Spirit', 'British', 'http://en.wikipedia.org/wiki/Spirit_(racing_team)');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('53', 'toleman', 'Toleman', 'British', 'http://en.wikipedia.org/wiki/Toleman');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('54', 'ats', 'ATS', 'Italian', 'http://en.wikipedia.org/wiki/ATS_(wheels)');
@@ -114,7 +126,7 @@ INSERT INTO constructors (constructorId, constructorRef, name, nationality, url)
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('114', 'kuzma', 'Kuzma', 'American', 'http://en.wikipedia.org/wiki/Kuzma_(constructor)');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('115', 'vhristensen', 'Christensen', 'American', 'http://en.wikipedia.org/wiki/Christensen_(constructor)');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('116', 'ewing', 'Ewing', 'American', 'http://en.wikipedia.org/wiki/Ewing_(constructor)');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('117', 'aston_martin', 'Aston Martin', 'British', 'http://en.wikipedia.org/wiki/Aston_Martin_in_Formula_One');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('117', 'aston_martin', 'Aston Martin', 'British', 'http://en.wikipedia.org/wiki/Aston_Martin_in_Formula_One', '002420', 'FFFFFF', '000000');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('118', 'vanwall', 'Vanwall', 'British', 'http://en.wikipedia.org/wiki/Vanwall');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('119', 'moore', 'Moore', 'American', 'http://en.wikipedia.org/wiki/Moore_(constructor)');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('120', 'dunn', 'Dunn', 'American', 'http://en.wikipedia.org/wiki/Dunn_Engineering');
@@ -128,7 +140,7 @@ INSERT INTO constructors (constructorId, constructorRef, name, nationality, url)
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('128', 'gordini', 'Gordini', 'French', 'http://en.wikipedia.org/wiki/Gordini');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('129', 'stevens', 'Stevens', 'American', 'http://en.wikipedia.org/wiki/Stevens_(constructor)');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('130', 'bugatti', 'Bugatti', 'French', 'http://en.wikipedia.org/wiki/Bugatti');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('131', 'mercedes', 'Mercedes', 'German', 'http://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('131', 'mercedes', 'Mercedes', 'German', 'http://en.wikipedia.org/wiki/Mercedes-Benz_in_Formula_One', 'C8CCCE', '00A19B', '565F64');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('132', 'lancia', 'Lancia', 'Italian', 'http://en.wikipedia.org/wiki/Lancia_in_Formula_One');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('133', 'hwm', 'HWM', 'British', 'http://en.wikipedia.org/wiki/Hersham_and_Walton_Motors');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('134', 'schroeder', 'Schroeder', 'American', 'http://en.wikipedia.org/wiki/Schroeder_(constructor)');
@@ -205,9 +217,9 @@ INSERT INTO constructors (constructorId, constructorRef, name, nationality, url)
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('206', 'marussia', 'Marussia', 'Russian', 'http://en.wikipedia.org/wiki/Marussia_F1');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('207', 'caterham', 'Caterham', 'Malaysian', 'http://en.wikipedia.org/wiki/Caterham_F1');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('208', 'lotus_f1', 'Lotus F1', 'British', 'http://en.wikipedia.org/wiki/Lotus_F1');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('209', 'manor', 'Manor Marussia', 'British', 'http://en.wikipedia.org/wiki/Manor_Motorsport');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('210', 'haas', 'Haas F1 Team', 'American', 'http://en.wikipedia.org/wiki/Haas_F1_Team');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('209', 'manor', 'Manor Marussia', 'British', 'http://en.wikipedia.org/wiki/Manor_Motorsport', '000000', 'FFFFFF', '000000');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('210', 'haas', 'Haas F1 Team', 'American', 'http://en.wikipedia.org/wiki/Haas_F1_Team', 'E6002B', 'FFFFFF', '000000');
 INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('211', 'racing_point', 'Racing Point', 'British', 'http://en.wikipedia.org/wiki/Racing_Point_F1_Team');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('213', 'alphatauri', 'AlphaTauri', 'Italian', 'http://en.wikipedia.org/wiki/Scuderia_AlphaTauri');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('214', 'alpine', 'Alpine F1 Team', 'French', 'http://en.wikipedia.org/wiki/Alpine_F1_Team');
-INSERT INTO constructors (constructorId, constructorRef, name, nationality, url) VALUES ('215', 'rb', 'RB F1 Team', 'Italian', 'http://en.wikipedia.org/wiki/RB_Formula_One_Team');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('213', 'alphatauri', 'AlphaTauri', 'Italian', 'http://en.wikipedia.org/wiki/Scuderia_AlphaTauri', '6692FF', '000000', '000000');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('214', 'alpine', 'Alpine F1 Team', 'French', 'http://en.wikipedia.org/wiki/Alpine_F1_Team', '02192B', '2173B8', 'FFFFFF');
+INSERT INTO constructors (constructorId, constructorRef, name, nationality, url, primary_color, secondary_color, tertiary_color) VALUES ('215', 'rb', 'RB F1 Team', 'Italian', 'http://en.wikipedia.org/wiki/RB_Formula_One_Team', '6692FF', '000000', '000000');

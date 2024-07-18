@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS teams (
     team_name TEXT NOT NULL,
     primary_color TEXT,
     secondary_color TEXT,
-    ternary_color TEXT,
+    tertiary_color TEXT,
     country TEXT,
     first_entry_year INTEGER,
     last_entry_year INTEGER,
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 
 -- Insert data into the f1_historic_teams table
-INSERT INTO teams (team_name, primary_color, secondary_color, ternary_color, country, first_entry_year, last_entry_year, constructors_championships, drivers_championships) VALUES 
+INSERT INTO teams (team_name, primary_color, secondary_color, tertiary_color, country, first_entry_year, last_entry_year, constructors_championships, drivers_championships) VALUES 
 ('Red Bull Racing', 'EC1845', 'FED502', '8D8F93', 'Austria', 2005, NULL, 5, 6),
 ('Mercedes-AMG Petronas', 'C8CCCE', '00A19B', '565F64', 'Germany', 2010, NULL, 8, 7),
 ('Ferrari', 'EF1A2D', 'FFF200', '000000', 'Italy', 1950, NULL, 16, 15),
