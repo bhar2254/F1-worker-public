@@ -479,7 +479,7 @@ app.get(`/drivers/profile/:identifier`, async c => {
 
 	const driversTable = new SQLCrud(c.env.DB, 'drivers')
 	const driverData = await driversTable.read({
-		columns: ['drivers.driverId', 'drivers.surname', 'drivers.forename', 'drivers.nationality', `drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number',
+		columns: ['drivers.driverId', 'drivers.driverRef', 'drivers.surname', 'drivers.forename', 'drivers.nationality', `drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number',
 			'driver_standings.position','driver_standings.points',
 			'constructors.name AS constructor_name', 'constructors.primary_color', 'constructors.secondary_color', 'constructors.tertiary_color'],
 		join: ['LEFT JOIN results ON drivers.driverId = results.driverId, constructors ON results.constructorId = constructors.constructorId, driver_standings ON drivers.driverId = driver_standings.driverId'],
@@ -498,6 +498,7 @@ app.get(`/drivers/profile/:identifier`, async c => {
 		driverId: profile_data.driverId || 0,
 		forename: profile_data.forename || '',
 		surname: profile_data.surname || '',
+		number: profile_data.number || 0,
 		nationality: profile_data.nationality || 'GBR',
 		position: profile_data.position || 0,
 		points: profile_data.points || 0,
@@ -576,9 +577,28 @@ app.get(`/drivers/profile/:identifier`, async c => {
 			tag: 'input',
 			key: `number`,
 			type: 'number',
-			value: `0`,
-			label: `Update driver number`,
-			placeholder: '0',
+			value: driver.number,
+			label: `Driver #`,
+			required: true,
+		},
+		{
+			id: `drivers.forename`,
+			tag: 'input',
+			key: `forename`,
+			type: 'text',
+			value: driver.forename,
+			label: `Forename`,
+			placeholder: 'Forename',
+			required: true,
+		},
+		{
+			id: `drivers.surname`,
+			tag: 'input',
+			key: `surname`,
+			type: 'text',
+			value: driver.surname,
+			label: `Surname`,
+			placeholder: 'Surname',
 			required: true,
 		}
 	]
@@ -608,8 +628,8 @@ app.get(`/drivers/profile/:identifier`, async c => {
 								<div class="row text-center">
 									<div class="col-lg-6 col-md-9 my-3 mx-auto rounded-3 btn f1-team-primary" style="color:#${primary_text_color}">${constructor.name}</div>
 								</div>
+								${udpateUserForm.render()}
 							</div>      
-							${udpateUserForm.render()}
 						</div>     
 					</div>          
 					<div class="card-footer">
