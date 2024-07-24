@@ -655,7 +655,7 @@ app.get(`/drivers/profile/:driverId/update`, async c => {
 	const queries = c.req.queries()
 	let queryArr = Object.entries(queries).map(x => `${x[0]} = "${x[1]}"`)
 	let updateQuery = `UPDATE drivers SET ${queryArr.join(', ')} WHERE driverId = "${driverId}";`
-	await db.prepare(updateQuery).run()	
+	db.prepare(updateQuery).run()	
 	return c.redirect(`/drivers/profile/${driverId}`)
 })
 
