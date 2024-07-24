@@ -217,7 +217,6 @@ export class FormInput extends HtmlElement {
                     <script>
                         document.getElementById("${id}_field").value = "${value}";
                     </script>`
-                console.log(`${key} ${value}`)
                 return FormInput.fieldWrapper({ id: id, content: content })
             }
         }
@@ -229,7 +228,7 @@ export class Form extends HtmlElement {
     constructor(args) {
         super(args)
         this._args = { ...args }
-        this.id = this._args.id || ''
+        this.id = this._args.id || 'page_form'
         this.form_html = ''
         this.field_length = this._args.fields ? this._args.fields.length : 0
         this.method = this._args.method || 'GET'
@@ -324,18 +323,28 @@ export class Modal extends HtmlElement {
 export class Table extends HtmlElement {
     constructor(args) {
         super(args)
-        const { data = {} } = args
+        this.tag = 'table'
+        this.classes = ['table','table-striped','table-compact']
+        const { data = [{}] } = args
         const content = []
+        const includesHeader = args.includesHeader || false
         const header = []
-        content.push('<th>')
-        Object.keys(data[0]).forEach(row => {
-            header.push(row)
-
+        if (includesHeader){
+            Object.values(data[0]).forEach(row => {
+                header.push(row)
+            })
+        } else {
+            Object.keys(data[0]).forEach(row => {
+                header.push(row)
+            })
+        }
+        content.push('<tr>')
+        header.forEach(key => {
             content.push(`
-                <td>${row}</td>
+                <th>${ key.replace('_', ' ').replace('-', ' ').capitalizeFirstChar() }</td>
             `)
         })
-        content.push('</th>')
+        content.push('</tr>')
         data.forEach(row => {
             content.push('<tr>')
             header.forEach(key => {
@@ -366,7 +375,7 @@ export class Page extends Defaults {
         const body = `
     <body>
         <div class='main'>
-            <div class='container my-5 py-3 bh-light-grey shadow-lg bh-left-bar col-lg-9 col-11'>
+            <div class='mx-auto px-4 my-5 py-3 bh-light-grey shadow-lg bh-left-bar col-lg-9 col-md-12 col-sm-12'>
                 ${content}
             </div>
         </div>`
@@ -425,7 +434,7 @@ export class Page extends Defaults {
             dropDownHtml += generateDropdown(each)
         return `
             <nav class='navbar navbar-expand-lg bg-primary bg-gradient sticky-top shadow-lg'>
-                <div class='col-9 container-fluid'>
+                <div class='col-7 container-fluid'>
                 <button class='my-1 navbar-toggler' type='button' data-bs-toggle='collapse' data-bs-target='#navbarSupportedContent' aria-controls='navbarSupportedContent' aria-expanded='false' aria-label='Toggle navigation'><i class='fa-solid fa-bars'></i></button>
                 <div class='collapse navbar-collapse' id='navbarSupportedContent'>
                     <a id='navbar_banner_button' class='fs-5 navbar-brand hide-on-shrink' href='/'>${this.brand}</a>

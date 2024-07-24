@@ -1,9 +1,9 @@
 DROP TABLE IF EXISTS constructor_results;
 CREATE TABLE constructor_results (
     "constructorResultsId" INTEGER PRIMARY KEY AUTOINCREMENT, 
-    "raceId" TEXT, 
-    "constructorId" TEXT, 
-    "points" TEXT, 
+    "raceId" INTEGER, 
+    "constructorId" INTEGER, 
+    "points" INTEGER, 
     "status" TEXT
 );
 INSERT INTO constructor_results (constructorResultsId, raceId, constructorId, points, status) VALUES ('1', '18', '1', '14', '\N');

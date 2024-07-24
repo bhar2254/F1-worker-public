@@ -6,17 +6,15 @@
 //  Import modules
 import { rawHtmlResponse } from './std'
 import { nationToIso2, iso3To2 } from './flag'
-import { Card, Form, Page } from './dom'
+import { Card, Form, Page, Table } from './dom'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { FetchAPI } from './fetchAPI'
-import { extractRaceClassification } from './wikiParse'
+import { extractWikiTable, wikiTableToJSON } from './wikiParse'
 import { SQLCrud } from './sql-d1'
 
 const version = '0.0.0'
-const api_version = 'v1'
-const minimum_year = 2023
-const current_year = 2024
+const api_version = ['v1']
 
 var ENV = {
 	version: version,
@@ -45,24 +43,24 @@ var ENV = {
 			link: `/races`
 		},{
 			text: 'Add Race Results',
-			link: `/api/${api_version}/races/addResults`
+			link: `/api/${api_version[0]}/races/addResults`
 		},{
 			text: 'hr',
 		},{
 			text: 'Drivers',
-			link: `/api/${api_version}/drivers`
+			link: `/api/${api_version[0]}/drivers`
 		},{
 			text: 'Drivers (byYear)',
-			link: `/api/${api_version}/drivers/byYear/${current_year}`
+			link: `/api/${api_version[0]}/drivers/byYear/`
 		},{
 			text: 'Meetings',
-			link: `/api/${api_version}/meetings`
+			link: `/api/${api_version[0]}/meetings`
 		}, {
 			text: 'Sessions',
-			link: `/api/${api_version}/sessions`
+			link: `/api/${api_version[0]}/sessions`
 		}, {
 			text: 'Export',
-			link: `/api/${api_version}/export`
+			link: `/api/${api_version[0]}/export`
 		}],
 	}]
 }
@@ -82,7 +80,6 @@ const applyCSSTheme = (scheme, options = {}) => {
 		return hexColorPattern.test(hex);
 	}	
 	const hexToRBG = (hex) => {
-		console.log(hex)
 		// Ensure the hex code is exactly 2 digits
 		let _hex = hex || []
 		if (_hex.length === 3) {
@@ -281,7 +278,7 @@ const _copyright = `
 
 const _footerDef = `
 	<div class='mx-auto'>
-		<div id='footer_motto' class='mx-auto bh-left-bar p-3 shadow-lg bh-sand bg-gradient text-center panel rounded-0' style='width:25%; min-width:10rem; margin-bottom:7.5rem;'>
+		<div id='footer_motto' class='col-lg-3 col-md-6 col-sm-9 col-xs-11 mx-auto bh-left-bar p-3 shadow-lg bh-sand bg-gradient text-center panel rounded-0' style='margin-bottom:7.5rem;'>
 			<i>This project was created to showcase the power of Cloudflare Workers for easing workflow and improving speed and reliability. Start your own Cloudflare worker site <a href='https://github.com/bhar2254/Cloudflare-Workers-Starter'>here!</a></i>
 			<br><br>
 			<small>As such, this site is not affiliated with F1 or any other brands shown or displayed in these data sets.</small>
@@ -389,18 +386,21 @@ app.get(`/drivers/championship`, async c => {
 app.get(`/drivers/championship/:year`, async c => {
 	// Access the D1 database bound to this Worker
 	const db = c.env.DB
-	const year = c.req.param('year')
-	const SQLTable = new SQLCrud(db, 'driver_standings')
-	const { results } = await SQLTable.read({
-		columns: ['driver_standings.*','drivers.surname','drivers.forename','drivers.nationality',`drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number', 
-			'races.year', 'races.round',
-			'teams.team_name', 'teams.primary_color', 'teams.secondary_color', 'teams.tertiary_color'
+	const { year } = c.req.param()
+	const resultsTable = new SQLCrud(c.env.DB, 'results')
+	const { results } = await resultsTable.read({
+		columns: ['drivers.*', `drivers.forename || ' ' || drivers.surname AS full_name`,
+			'MAX(driver_standings.position) AS position', 'MAX(driver_standings.points) as points',
+			'constructors.name AS constructor_name', 'constructors.primary_color', 'constructors.secondary_color', 'constructors.tertiary_color'],
+		join: ['LEFT JOIN drivers ON drivers.driverId = results.driverId, races ON races.raceId = results.raceId, constructors ON results.constructorId = constructors.constructorId',
+			`driver_standings ON driver_standings.raceId = races.raceId and driver_standings.driverId = drivers.driverId`
 		],
-		join: ['JOIN drivers ON driver_standings.driverId = drivers.driverId, races ON driver_standings.raceId = races.raceId LEFT JOIN teams ON driver_standings.teamId = teams.teamId'],
-		where: `races.year = ${ year }`,
-		orderBy: ['CAST(driver_standings.raceId AS INTEGER) DESC', 'CAST(driver_standings.position AS INTEGER) ASC']
+		group: ['drivers.driverId'],
+		where: [`races.year = ${year}`],
+		orderBy: ['points DESC'],
 	})
-	let body = '<div class="row g-4">'
+	let body = `<div class="my-3 py-3 border-bottom h3">Formula 1 <br> ${year} Championship Drivers</div>
+		<div class="row g-4">`
 	let index = 1
 	let processedDrivers = []
 	for(const each of results){
@@ -408,32 +408,41 @@ app.get(`/drivers/championship/:year`, async c => {
 			continue
 		processedDrivers.push(each.code)
 		const driver_d1_data = each
-		const first_name = driver_d1_data.forename.replaceAll(" ","")
-		const last_name = driver_d1_data.surname.replaceAll(" ","")
-		const driver_img_code = `${first_name.substring(0,3).toUpperCase()}${last_name.substring(0,3).toUpperCase()}01`
-		const primary_color = driver_d1_data.primary_color || '000000'
-		const text_color = primary_color < '555555' ? 'white' : 'black'
-		const col_width = index > 3 ? 'col-lg-3 col-md-4 col-sm-12' : 'col-lg-4 col-md-6 col-sm-12'
+		const driver = {
+			forename: driver_d1_data.forename.replaceAll(" ", ""),
+			surname: driver_d1_data.surname.replaceAll(" ", ""),
+			full_name: driver_d1_data.full_name,
+			nationality: each.nationality,
+			points: driver_d1_data.points,
+			position: driver_d1_data.position,
+		}
+		driver.img_code = `${driver.forename.substring(0, 3).toUpperCase()}${driver.surname.substring(0, 3).toUpperCase()}01`
+		const constructor = {
+			name: driver_d1_data.constructor_name,
+			primary_color: driver_d1_data.primary_color || '000000'
+		}
+		const text_color = constructor.primary_color < '555555' ? 'white' : 'black'
+		const col_width = index > 3 ? 'col-lg-3 col-md-4 col-sm-12 mx-auto' : 'col-lg-4 col-md-6 col-sm-12 mx-auto'
 		const cardData = {
 			header: `<div class='col-12 float-start'>
-						${first_name} <strong>${last_name.toUpperCase()}</strong>
+						${driver.forename} <strong>${driver.surname.toUpperCase()}</strong>
 					</div>
 					<div class='col-12 float-end'>
-						<img src="https://flagsapi.com/${nationToIso2(driver_d1_data.nationality)}/flat/32.png"/>
+						<img src="https://flagsapi.com/${nationToIso2(driver.nationality)}/flat/32.png"/>
 					</div>`,
 			body: `<div class="row g-4">
 						<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-6'>
-							<a href="/drivers/profile/${first_name.toLowerCase()}-${last_name.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${first_name} ${last_name} headshot' alt='${first_name} ${last_name} headshot' loading='eager' src="https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/${first_name.substring(0, 1)}/${driver_img_code}_${first_name}_${last_name}/${driver_img_code.toLowerCase()}.png"></a>
+							<a href="/drivers/profile/${driver.forename.toLowerCase()}-${driver.surname.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${driver.forename} ${driver.surname} headshot' alt='${driver.forename} ${driver.surname} headshot' loading='eager' src="https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/${driver.forename.substring(0, 1)}/${driver.img_code}_${driver.forename}_${driver.surname}/${driver.img_code.toLowerCase()}.png"></a>
 						</div>
 						<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-6'>
 							<p class='border-top border-bottom py-1 h5 fw-bold' lang='en'>
-								${driver_d1_data.position || 0} | ${driver_d1_data.points || 0}  
+								${driver.position || 0} | ${driver.points || 0}  
 							</p>                                        
-							<a href="/drivers/profile/${first_name.toLowerCase()}-${last_name.toLowerCase()}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${first_name} ${last_name} headshot' alt='${first_name} ${last_name} headshot' loading='eager' src="https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${driver_img_code}.png"></a>
+							<a href="/drivers/profile/${driver.full_name.toLowerCase().replaceAll(' ','-')}}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${driver.forename} ${driver.surname} headshot' alt='${driver.forename} ${driver.surname} headshot' loading='eager' src="https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${driver.img_code}.png"></a>
 						</div>      
 					</div>     `,
 			footer: `<div class="row text-center">
-						<div class="col-lg-6 col-md-9 p-1 my-3 mx-auto rounded-3" style="color: ${text_color}; background-color:#${primary_color}">${driver_d1_data.team_name || 'Missing'}</div>
+						<div class="col-lg-6 col-md-9 p-1 my-3 mx-auto rounded-3" style="color: ${text_color}; background-color:#${constructor.primary_color}">${constructor.name || 'Missing'}</div>
 					</div>`,
 		}
 		const card = new Card(cardData)
@@ -450,33 +459,43 @@ app.get(`/drivers/championship/:year`, async c => {
 })
 
 app.get(`/drivers/profile/:identifier`, async c => {
-	const identifier = c.req.param('identifier')
+	let identifier = c.req.param('identifier')
+	identifier = identifier.replaceAll('_','-')
+	let identifierSplit = identifier.split('-')
 	const year = new Date(Date.now()).getFullYear()
 	let key = ''
 	let value = ''
 	
 	if(!Number.isNaN(Number(identifier))){
-		key = 'drivers.number'
+		key = 'drivers.driverId'
 		value = identifier
-	} else {
+	} 
+	if(Number.isNaN(Number(identifier))){
 		key = 'full_name'
-		const splitName = identifier.split('-')
-		value = `${splitName[0].capitalizeFirstChar()} ${splitName[1].capitalizeFirstChar()}`
+		let splitName = identifierSplit
+		splitName = splitName.map(x => x.capitalizeFirstChar())
+		value = `${splitName.join(' ').trim()}`
 	}
 
 	const driversTable = new SQLCrud(c.env.DB, 'drivers')
 	const driverData = await driversTable.read({
-		columns: ['drivers.surname', 'drivers.forename', 'drivers.nationality', `drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number',
+		columns: ['drivers.driverId', 'drivers.surname', 'drivers.forename', 'drivers.nationality', `drivers.forename || ' ' || drivers.surname AS full_name`, 'drivers.code', 'drivers.number',
 			'driver_standings.position','driver_standings.points',
 			'constructors.name AS constructor_name', 'constructors.primary_color', 'constructors.secondary_color', 'constructors.tertiary_color'],
 		join: ['LEFT JOIN results ON drivers.driverId = results.driverId, constructors ON results.constructorId = constructors.constructorId, driver_standings ON drivers.driverId = driver_standings.driverId'],
-		where: `${key} = "${value}"`,
-		orderBy: ['results.resultId DESC'],
+		where: `${key} LIKE "${value}"`,
+		orderBy: ['driver_standings.driverStandingsId DESC', 'results.resultId DESC'],
 		limit: '1'
 	})
+	
+	if(typeof driverData.results[0] === 'undefined' && identifierSplit.length > 1){
+		identifierSplit.pop()
+		return c.redirect(`/drivers/profile/${identifierSplit.join('-')}`)
+	}
 
 	const profile_data = driverData.results[0]
 	const driver = {
+		driverId: profile_data.driverId || 0,
 		forename: profile_data.forename || '',
 		surname: profile_data.surname || '',
 		nationality: profile_data.nationality || 'GBR',
@@ -487,6 +506,9 @@ app.get(`/drivers/profile/:identifier`, async c => {
 	driver.headshot = `${driver.forename.substring(0, 3).toUpperCase()}${driver.surname.substring(0, 3).toUpperCase()}01`
 	driver.headshot_url = profile_data.url || `https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/${driver.forename.substring(0, 1)}/${driver.headshot.toUpperCase()}_${driver.forename}_${driver.surname}/${driver.headshot.toLowerCase()}.png`,
 	driver.number_url = `https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${driver.forename.substring(0, 3).toUpperCase()}${driver.surname.substring(0, 3).toUpperCase()}01.png`
+
+	if (key === 'drivers.driverId')
+		return c.redirect(`/drivers/profile/${driver.forename.toLowerCase()}-${driver.surname.toLowerCase()}`)
 
 	const constructor = {
 		name: profile_data.constructor_name,
@@ -501,9 +523,8 @@ app.get(`/drivers/profile/:identifier`, async c => {
 			'results.number', 'results.position', 'results.positionText', 'results.points', 'results.time', 'results.fastestLap', 'results.fastestLapTime', 'results.rank'
 		],
 		join: ['LEFT JOIN races ON results.raceId = races.raceId'],
-		where: `driverId = "${value}"`,
-		orderBy: ['results.resultId DESC'],
-		limit: '1'
+		where: `driverId = "${driver.driverId}"`,
+		orderBy: ['results.resultId DESC']
 	})
 
 	let race_results = `<div class="btn-group flex-wrap" role="group">`
@@ -542,13 +563,26 @@ app.get(`/drivers/profile/:identifier`, async c => {
 					<tr>
 						<td><a class="btn f1-team-primary" style="color:#${primary_text_color}" href="/races/race/${url.split('/')[4]}">${each.name}</a></td>
 						<td>${new Date(each.date).toLocaleDateString()}</td>
-						<td>${time.substring(0,5)}</td>
-						<td>${position}</td>
-						<td>${points}</td>
+						<td>${String(time).replaceAll('\\N','')}</td>
+						<td>${String(position).replaceAll('\\N', '') }</td>
+						<td>${String(points).replaceAll('\\N', '')}</td>
 					</tr>`
 	}
 	race_results += `</tbody>
 			</table>`
+	const updateUserFields = [
+		{
+			id: `drivers.number`,
+			tag: 'input',
+			key: `number`,
+			type: 'number',
+			value: `0`,
+			label: `Update driver number`,
+			placeholder: '0',
+			required: true,
+		}
+	]
+	const udpateUserForm = new Form({ action: `/drivers/profile/${driver.driverId}/update`, fields: updateUserFields })
 	const body = `
 		<div class="row mx-auto"
 			<div class="col-11">
@@ -575,6 +609,7 @@ app.get(`/drivers/profile/:identifier`, async c => {
 									<div class="col-lg-6 col-md-9 my-3 mx-auto rounded-3 btn f1-team-primary" style="color:#${primary_text_color}">${constructor.name}</div>
 								</div>
 							</div>      
+							${udpateUserForm.render()}
 						</div>     
 					</div>          
 					<div class="card-footer">
@@ -592,6 +627,16 @@ app.get(`/drivers/profile/:identifier`, async c => {
 		body: body
 	})
 	return rawHtmlResponse(page.render())
+})
+
+app.get(`/drivers/profile/:driverId/update`, async c => {
+	const db = c.env.DB
+	const { driverId } = c.req.param()
+	const queries = c.req.queries()
+	let queryArr = Object.entries(queries).map(x => `${x[0]} = "${x[1]}"`)
+	let updateQuery = `UPDATE drivers SET ${queryArr.join(', ')} WHERE driverId = "${driverId}";`
+	await db.prepare(updateQuery).run()	
+	return c.redirect(`/drivers/profile/${driverId}`)
 })
 
 app.get(`/races`, async c => {
@@ -648,18 +693,55 @@ app.get(`/races/race/:race_name`, async c => {
 	const { race_name } = c.req.param()
 	const fetch2Data = await fetch(`https://en.wikipedia.org/w/api.php?action=parse&page=${race_name}&format=json`)
 	const jsonData = await fetch2Data.json()
-	const raceClassificationTable = extractRaceClassification(jsonData);
+
+	const qualiTable = wikiTableToJSON('Qualifying_classification', jsonData);
+	let tableObjects = qualiTable.map(x => ({
+		position: Number(x[0]),
+		driver_number: Number(x[1]),
+		driver: String(x[2]).replaceAll('/wiki/', '/drivers/profile/'),
+		constructor: String(x[3]),
+		q1: String(x[4]),
+		q2: String(x[5]),
+		q3: String(x[6]),
+		grid: String(x[7]),
+	}));
+	tableObjects = tableObjects.filter(obj => !isNaN(obj.position) && !isNaN(obj.driver_number));
+	const qualisTable = new Table({ data: tableObjects })
+
+	const raceTable = wikiTableToJSON('Race_classification', jsonData);
+	tableObjects = raceTable.map(x => ({
+		position: Number(x[0]),
+		driver_number: Number(x[1]),
+		driver: String(x[2]).replaceAll('/wiki/', '/drivers/profile/'),
+		constructor: String(x[3]),
+		laps: String(x[4]),
+		time: String(x[5]),
+		grid: String(x[6]),
+		points: String(x[7]),
+	}));
+	tableObjects = tableObjects.filter(obj => !isNaN(obj.position) && !isNaN(obj.driver_number));
+	const racesTable = new Table({ data: tableObjects })
+
 	let heading = ''
 	for(const each of race_name.split('_')){
 		heading += `${each.capitalizeFirstChar()} `
 	}
+
 	const page = new Page({
 		siteTitle: `F1 openAPI`, brand: `Formula 1 OpenAPI`,
 		pageTitle: heading,
-		body: `<h1 class="text-center">${heading}</h1>
-		
-			<div class="text-center mx-auto">
-				${raceClassificationTable}
+		body: `<h1 class="my-3 py-3 text-center">${heading}</h1>
+			<div class="btn-group flex-wrap" role="group">
+				<a href="#race" type="button" class="btn bh-primary">Race</a>
+				<a href="#qualifying" type="button" class="btn bh-primary">Qualifying</a>
+			</div>
+			<h3 id="race">Grand Prix</h3>
+			<div class= "text-center mx-auto table-responsive">
+				${ racesTable.render() }
+			</div>
+			<h3 id="qualifying">Qualifying</h3>
+			<div class="text-center mx-auto table-responsive">
+				${qualisTable.render()}
 			</div>`
 	})
 	return c.html(page.render())
@@ -669,7 +751,7 @@ app.get(`/races/:race_name`, async c => {
 	const { race_name } = c.req.param()
 	const fetch2Data = await fetch(`https://en.wikipedia.org/w/api.php?action=parse&page=${race_name}&format=json`)
 	const jsonData = await fetch2Data.json()
-	const raceClassificationTable = extractRaceClassification(jsonData);
+	const raceClassificationTable = extractWikiTable('Race_classification', jsonData);
 	let heading = ''
 	for(const each of race_name.split('_')){
 		heading += `${each.capitalizeFirstChar()} `
@@ -691,7 +773,7 @@ app.get(`/races/:race_name`, async c => {
 // 
 
 //	SQLCrud implementation
-app.get(`/api/${api_version}/create/:table`, async c => {
+app.get(`/api/${api_version[0]}/create/:table`, async c => {
 	const { table } = c.req.param()
 	const queries = c.req.queries()
 	const sqlTable = new SQLCrud(c.env.DB, table)
@@ -709,7 +791,7 @@ app.get(`/api/${api_version}/create/:table`, async c => {
 	return c.json({ response: { status: 201, ...response } })
 })
 
-app.get(`/api/${api_version}/read/:table/:identifier`, async c => {
+app.get(`/api/${api_version[0]}/read/:table/:identifier`, async c => {
 	const { table, identifier, value } = c.req.param()
 	const queries = c.req.queries()	// filter
 	const sqlTable = new SQLCrud(c.env.DB, table)
@@ -727,7 +809,7 @@ app.get(`/api/${api_version}/read/:table/:identifier`, async c => {
 	return c.json({ response: { status: 201, ...response } })
 })
 
-app.get(`/api/${api_version}/update/:table/:identifier/:value`, async c => {
+app.get(`/api/${api_version[0]}/update/:table/:identifier/:value`, async c => {
 	const { table, identifier, value } = c.req.param()
 	const queries = c.req.queries()
 	const sqlTable = new SQLCrud(c.env.DB, table)
@@ -746,7 +828,7 @@ app.get(`/api/${api_version}/update/:table/:identifier/:value`, async c => {
 	return c.json({ response: { status: 201, ...response } })
 })
 
-app.get(`/api/${api_version}/destroy/:table/:identifier/:value`, async c => {
+app.get(`/api/${api_version[0]}/destroy/:table/:identifier/:value`, async c => {
 	const { table, identifier, value } = c.req.param()
 	const queries = c.req.queries()
 	const sqlTable = new SQLCrud(c.env.DB, table)
@@ -765,10 +847,11 @@ app.get(`/api/${api_version}/destroy/:table/:identifier/:value`, async c => {
 	return c.json({ response: { status: 201, ...response } })
 })
 
-app.get(`/api/${api_version}/races/addResults`, async c => {
+app.get(`/api/${api_version[0]}/races/addResults`, async c => {
 	const heading = 'Add Race Results'
 	const year = new Date().getFullYear()
 	const track = {}
+	let fields = []
 	track.query = `SELECT DISTINCT name FROM races WHERE year = ${year}`
 	track.prepare = await c.env.DB.prepare(track.query).all()
 	track.options = {}
@@ -795,10 +878,10 @@ app.get(`/api/${api_version}/races/addResults`, async c => {
 		a.forEach((k, i) => { obj[k] = b[i] })
 		return obj;
 	}
-	const n10array = Array.from(Array(calculateAge(1950)).keys()).map(x => x + 1950)	// 1950, first year of F1 racing
+	const n10array = Array.from(Array(calculateAge(1950)).keys()).map(x => 2024 - x)	// 1950, first year of F1 racing
 	const n10obj = convertToObj(n10array, n10array)
 
-	let fields = [
+	fields = [
 		{
 			id: 'race.name',
 			tag: 'select',
@@ -821,7 +904,7 @@ app.get(`/api/${api_version}/races/addResults`, async c => {
 
 	const drivers = {}
 	drivers.query = `
-		SELECT DISTINCT
+		SELECT
 			drivers.driverId,
 			drivers.driverRef, 
 			drivers.forename, 
@@ -833,16 +916,18 @@ app.get(`/api/${api_version}/races/addResults`, async c => {
 			results
 		LEFT JOIN 
 			drivers ON results.driverId = drivers.driverId,
-			driver_standings ON drivers.driverId = driver_standings.driverId,
 			constructors ON results.constructorId = constructors.constructorId,
-			constructor_standings ON constructors.constructorId = constructor_standings.constructorId,
 			races ON results.raceId = races.raceId
 		WHERE 
 			races.year = ${year}
+		GROUP BY
+			drivers.driverId
 		ORDER BY 
 			drivers.driverId ASC
 		LIMIT 25;`
+
 	drivers.prepare = await c.env.DB.prepare(drivers.query).all()
+	
 	const { results } = drivers.prepare
 	for(const row of results){
 		fields.push({
@@ -860,9 +945,10 @@ app.get(`/api/${api_version}/races/addResults`, async c => {
 	const addResultForm = new Form({
 		id: 'addResultsForm',
 		method: 'POST',
-		action: `/api/${api_version}/races/addResults`,
+		action: `/api/${api_version[0]}/races/addResults`,
 		fields: fields,
 	})
+
 	const page = new Page({
 		siteTitle: `F1 openAPI`, brand: `Formula 1 OpenAPI`,
 		pageTitle: heading,
@@ -883,12 +969,12 @@ const convertBodyToJSON = body => {
 	return body
 }
 
-app.post(`/api/${api_version}/races/addResults`, async c => {	
+app.post(`/api/${api_version[0]}/races/addResults`, async c => {	
 	const body = await c.req.parseBody()
 	return c.json(convertBodyToJSON(body))
 })
 
-app.get(`/api/${api_version}/drivers/:identifier`, async c => {
+app.get(`/api/${api_version[0]}/drivers/:identifier`, async c => {
 	const { identifier } = c.req.param()
 	let fetchData = {}
 	if(!Number.isNaN(Number(identifier))){
@@ -915,14 +1001,14 @@ app.get(`/api/${api_version}/drivers/:identifier`, async c => {
 })
 
 for (const [key, value] of Object.entries(FetchAPI.defaults.endpoints)) {
-	let endpoint = `/api/${api_version}/${key}`
+	let endpoint = `/api/${api_version[0]}/${key}`
 	app.get(endpoint, async c => {
 		const { request, query } = formatRequest(key, c)
 		const fetchData = await FetchAPI.gatherAPI({ ...request, query: query })
 		const response = fetchData.response
 		return c.json({ response: response })
 	})
-	endpoint = `/api/${api_version}/${key}/:${value}`
+	endpoint = `/api/${api_version[0]}/${key}/:${value}`
 	app.get(endpoint, async c => {
 		const { request, query } = formatRequest(key, c)
 		const fetchData = await FetchAPI.gatherAPI({ ...request, query: query })
@@ -931,43 +1017,26 @@ for (const [key, value] of Object.entries(FetchAPI.defaults.endpoints)) {
 	})
 }
 
-app.get(`/api/${api_version}/drivers/byYear/:year`, async c => {
-	const currentYear = current_year // magic number because cloudflare doesn't like global dates
-	const minimumYear = minimum_year // from OpenAi.com
+app.get(`/api/${api_version[0]}/drivers/byYear/`, async c => {
+	const year = new Date().getFullYear()
+	return c.redirect(`/api/${api_version}/drivers/byYear/${year}`)
+})
+
+app.get(`/api/${api_version[0]}/drivers/byYear/:year`, async c => {
 	const { year } = c.req.param()
-	
-	// Access the D1 database bound to this Worker
-	try {
-		const db = c.env.DB
-	} catch {
-		console.log('DB Error')
-	}
-
-	// year = year < minimumYear ? minimumYear : year > currentYear ? currentYear : year
-	const meetingRequest = formatRequest('meetings', c)
-	let fetchData = await FetchAPI.gatherAPI({ ...meetingRequest.request, query: { ...meetingRequest.query, year: year } })
-	const meetingData = fetchData.response
-	let meetingKeys = []
-	for (const each of meetingData)
-		if(!meetingKeys.includes(each.meeting_key))
-			meetingKeys.push(each.meeting_key)
-
-	fetchData = await FetchAPI.gatherAPI({ endpoint: 'drivers' })
-	const driverData = fetchData.response
-	let driverNames = []
-	let drivers = []
-	for (const each of driverData){
-		const driverNotInRoster = !driverNames.includes(each.full_name)
-		const meetingKeyInList = meetingKeys.includes(each.meeting_key)
-		const isntJuniorDriver = true || each.headshot_url
-		const addDriverToList = driverNotInRoster && meetingKeyInList && isntJuniorDriver
-		if (addDriverToList){
-			drivers.push(each)
-			driverNames.push(each.full_name)
-		}
-	}
-	
-	return c.json( drivers )
+	const resultsTable = new SQLCrud(c.env.DB, 'results')
+	const { results } = await resultsTable.read({
+		columns: ['drivers.*', `drivers.forename || ' ' || drivers.surname AS full_name`,
+			'MAX(driver_standings.position) AS position', 'MAX(driver_standings.points) as points',
+			'constructors.name AS constructor_name', 'constructors.primary_color', 'constructors.secondary_color', 'constructors.tertiary_color'],
+		join: ['LEFT JOIN drivers ON drivers.driverId = results.driverId, races ON races.raceId = results.raceId, constructors ON results.constructorId = constructors.constructorId',
+			`driver_standings ON driver_standings.raceId = races.raceId and driver_standings.driverId = drivers.driverId`
+		],
+		group: ['drivers.driverId'],
+		where: [`races.year = ${year}`],
+		orderBy: ['points DESC'],
+	})
+	return c.json( results )
 })
 
 const JSONtoCSV = (dataArray) => {
@@ -981,7 +1050,7 @@ const JSONtoCSV = (dataArray) => {
 	return body
 }
 
-app.get(`/api/${api_version}/export`, async c => {
+app.get(`/api/${api_version[0]}/export`, async c => {
 	// Set headers
 	c.header('X-Message', 'Export CSV!')
 	c.header('Content-Type', 'text/csv')
@@ -1001,7 +1070,7 @@ app.get(`/api/${api_version}/export`, async c => {
 		const m = a.map(t => String(t).capitalizeFirstChar())
 		return m.join(' ').trim()
 	}
-	results.map(row => buttons.push(`<a class="btn bh-primary my-1 mx-auto" href="/api/${api_version}/export/${row.name}">${buttonFormatting(row.name)}</a>`))
+	results.map(row => buttons.push(`<a class="btn bh-primary my-1 mx-auto" href="/api/${api_version[0]}/export/${row.name}">${buttonFormatting(row.name)}</a>`))
 	buttons.push('</div>')
 	const page = new Page({
 		siteTitle: `F1 openAPI`, brand: `Formula 1 OpenAPI`,
@@ -1015,7 +1084,7 @@ app.get(`/api/${api_version}/export`, async c => {
 	return c.html(page.render())
 })
 
-app.get(`/api/${api_version}/export/:table`, async c => {
+app.get(`/api/${api_version[0]}/export/:table`, async c => {
 	const { page = 0, limit = 50 } = c.req.query()
 	const offset = page * limit
 

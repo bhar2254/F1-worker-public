@@ -1,10 +1,10 @@
 DROP TABLE IF EXISTS constructor_standings;
 CREATE TABLE constructor_standings (
     "constructorStandingsId" INTEGER PRIMARY KEY AUTOINCREMENT, 
-    "raceId" TEXT, 
-    "constructorId" TEXT, 
-    "points" TEXT, 
-    "position" TEXT, 
+    "raceId" INTEGER, 
+    "constructorId" INTEGER, 
+    "points" INTEGER, 
+    "position" INTEGER, 
     "positionText" TEXT, 
     "wins" TEXT
 );

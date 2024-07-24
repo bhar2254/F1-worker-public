@@ -6,8 +6,9 @@ class SQLQuery {
         this.table = table
         this.columns = _args.columns || ['*']
         this.where = _args.where || ''
-        this.limit = _args.limit || ''
+        this.group = _args.group || ''
         this.orderBy = _args.orderBy || ''
+        this.limit = _args.limit || ''
         this.join = _args.join || ['']
         this.data = _args.data || {}
     }
@@ -62,6 +63,12 @@ class SQLQuery {
         const limit = this._limit.length ? `LIMIT ${this._limit}` : ``
         return limit
     }
+    set group(group) {
+        this._group = Array.isArray(group) ? group : []
+    }
+    get group() {
+        return this._group.length ? `GROUP BY ${this._group.join(', ')}` : ``
+    }
     set orderBy(orderBy) {
         this._orderBy = Array.isArray(orderBy) ? orderBy : []
     }
@@ -73,7 +80,7 @@ class SQLQuery {
     //  SELECT * FROM table WHERE ORDER BY LIMIT
         const statement_types = {
             'INSERT': `${this.key} INTO ${this.table} ${this.insert};`,
-            'SELECT': `${this.key} ${this.columns} FROM ${this.table} ${this.join} ${this.where} ${this.orderBy} ${this.limit};`,
+            'SELECT': `${this.key} ${this.columns} FROM ${this.table} ${this.join} ${this.where} ${this.group} ${this.orderBy} ${this.limit};`,
             'UPDATE': `${this.key} ${this.table} SET ${this.set} ${this.where};`,
             'DELETE': `${this.key} FROM ${this.table} ${this.where};`,
         }
@@ -101,7 +108,6 @@ export class SQLCrud {
     }
     async read(args){
         const query = new SQLQuery('SELECT', this.table, args)
-        console.log(query.statement)
         return await this.db.prepare(query.statement).all()
     }
     async update(args) {
