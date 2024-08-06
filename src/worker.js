@@ -8,7 +8,6 @@ import { rawHtmlResponse } from './std'
 import { nationToIso2, iso3To2 } from './flag'
 import { Card, Form, Page, Table } from './dom'
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { FetchAPI } from './fetchAPI'
 import { extractWikiTable, wikiTableToJSON } from './wikiParse'
 import { SQLCrud } from './sql-d1'
@@ -77,7 +76,7 @@ const applyCSSTheme = (scheme, options = {}) => {
 	function isValidHexColor(hex) {
 		// Use a regular expression to check if the input is a valid 6-digit hex color
 		const hexColorPattern = /^#?([A-Fa-f0-9]{6})$/;
-		return hexColorPattern.test(hex);
+		return hexColorPattern.test(hex)
 	}	
 	const hexToRBG = (hex) => {
 		// Ensure the hex code is exactly 2 digits
@@ -86,7 +85,7 @@ const applyCSSTheme = (scheme, options = {}) => {
 			_hex += _hex
 		}
 		if (_hex.length !== 6) {
-			throw new Error('Invalid hex color format. It should be 6 digits.');
+			throw new Error('Invalid hex color format. It should be 6 digits.')
 		}
 		let output = parseInt(hex, 16)
 		output = Math.floor(output)
@@ -101,16 +100,16 @@ const applyCSSTheme = (scheme, options = {}) => {
 	function hexToComplement(hex) {
 		// Ensure the input is a valid 6-digit hex color
 		if (!/^#?([A-Fa-f0-9]{6})$/.test(hex)) {
-			throw new Error("Invalid hex color");
+			throw new Error("Invalid hex color")
 		}
 	
 		// Remove the hash if it exists
-		hex = hex.replace(/^#/, '');
+		hex = hex.replace(/^#/, '')
 	
 		// Convert the hex color to RGB
-		const r = parseInt(hex.slice(0, 2), 16);
-		const g = parseInt(hex.slice(2, 4), 16);
-		const b = parseInt(hex.slice(4, 6), 16);
+		const r = parseInt(hex.slice(0, 2), 16)
+		const g = parseInt(hex.slice(2, 4), 16)
+		const b = parseInt(hex.slice(4, 6), 16)
 	
 		// Calculate the complement
 		const compR = 255 - r;
@@ -118,7 +117,7 @@ const applyCSSTheme = (scheme, options = {}) => {
 		const compB = 255 - b;
 	
 		// Convert the complement RGB values back to hex
-		const compHex = ((compR << 16) | (compG << 8) | compB).toString(16).padStart(6, '0');
+		const compHex = ((compR << 16) | (compG << 8) | compB).toString(16).padStart(6, '0')
 	
 		return `${compHex}`;
 	}
@@ -127,15 +126,15 @@ const applyCSSTheme = (scheme, options = {}) => {
 		g /= 255;
 		b /= 255;
 	
-		const max = Math.max(r, g, b);
-		const min = Math.min(r, g, b);
+		const max = Math.max(r, g, b)
+		const min = Math.min(r, g, b)
 		let h, s, l = (max + min) / 2;
 	
 		if (max === min) {
 			h = s = 0; // achromatic
 		} else {
 			const d = max - min;
-			s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+			s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
 	
 			switch (max) {
 				case r: h = (g - b) / d + (g < b ? 6 : 0); break;
@@ -165,13 +164,13 @@ const applyCSSTheme = (scheme, options = {}) => {
 		} else {
 			const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
 			const p = 2 * l - q;
-			r = hue2rgb(p, q, h + 1 / 3);
-			g = hue2rgb(p, q, h);
-			b = hue2rgb(p, q, h - 1 / 3);
+			r = hue2rgb(p, q, h + 1 / 3)
+			g = hue2rgb(p, q, h)
+			b = hue2rgb(p, q, h - 1 / 3)
 		}
 	
 		const toHex = x => {
-			const hex = Math.round(x * 255).toString(16);
+			const hex = Math.round(x * 255).toString(16)
 			return hex.length === 1 ? '0' + hex : hex;
 		};
 	
@@ -180,23 +179,23 @@ const applyCSSTheme = (scheme, options = {}) => {
 	function hexToAnalogous(hex) {
 		// Ensure the input is a valid 6-digit hex color
 		if (!/^#?([A-Fa-f0-9]{6})$/.test(hex)) {
-			throw new Error("Invalid hex color");
+			throw new Error("Invalid hex color")
 		}
 	
 		// Remove the hash if it exists
-		hex = hex.replace(/^#/, '');
+		hex = hex.replace(/^#/, '')
 	
 		// Convert hex to RGB
-		const r = parseInt(hex.slice(0, 2), 16);
-		const g = parseInt(hex.slice(2, 4), 16);
-		const b = parseInt(hex.slice(4, 6), 16);
+		const r = parseInt(hex.slice(0, 2), 16)
+		const g = parseInt(hex.slice(2, 4), 16)
+		const b = parseInt(hex.slice(4, 6), 16)
 	
 		// Convert RGB to HSL
-		const { h, s, l } = rgbToHsl(r, g, b);
+		const { h, s, l } = rgbToHsl(r, g, b)
 	
 		// Get the analogous colors by adjusting the hue
-		const analogous1 = hslToHex((h + 30) % 360, s, l);
-		const analogous2 = hslToHex((h - 30 + 360) % 360, s, l);
+		const analogous1 = hslToHex((h + 30) % 360, s, l)
+		const analogous2 = hslToHex((h - 30 + 360) % 360, s, l)
 	
 		return [analogous1, analogous2];
 	}
@@ -274,7 +273,7 @@ const _headerDef = `
 
 const _copyright = `
 	<span id = 'footerText'><span id='year'></span> © ${ENV.copyright}</span>
-	<script>document.getElementById('year').innerHTML = new Date().getFullYear();</script>`
+	<script>document.getElementById('year').innerHTML = new Date().getFullYear()</script>`
 
 const _footerDef = `
 	<div class='mx-auto'>
@@ -286,7 +285,7 @@ const _footerDef = `
 	</div>
 	<button onclick="topFunction()" id="topButton" title="Go to top" style="display:block;">Top</button> 
 	<script>
-		let buttonToTop = document.getElementById("topButton");
+		let buttonToTop = document.getElementById("topButton")
 
 		// When the user scrolls down 20px from the top of the document, show the button
 		window.onscroll = function() {scrollFunction()};
@@ -330,17 +329,6 @@ FetchAPI.setDefaults({
 })
 
 const app = new Hono()
-
-app.use('/api/*', 
-	cors({
-	  // `c` is a `Context` object
-	  origin: (origin, c) => {
-		return origin.endsWith('.blaineharper.com')
-		  ? origin
-		  : 'http://blaineharper.com'
-	  },
-	})
-)
 
 //	route handler
 app.get('/', async c => {
@@ -437,10 +425,10 @@ app.get(`/drivers/championship/:year`, async c => {
 						<div class='text-center mx-auto col-lg-6 col-md-6 col-sm-6'>
 							<p class='border-top border-bottom py-1 h5 fw-bold' lang='en'>
 								${driver.position || 0} | ${driver.points || 0}  
-							</p>                                        
-							<a href="/drivers/profile/${driver.full_name.toLowerCase().replaceAll(' ','-')}}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${driver.forename} ${driver.surname} headshot' alt='${driver.forename} ${driver.surname} headshot' loading='eager' src="https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${driver.img_code}.png"></a>
-						</div>      
-					</div>     `,
+							</p>
+							<a href="/drivers/profile/${driver.driverId}"><img style="max-width:100%;" class='rounded-3 img-drop-shadow mb-3 border-0' title='${driver.forename} ${driver.surname} headshot' alt='${driver.forename} ${driver.surname} headshot' loading='eager' src="https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${driver.img_code}.png"></a>
+						</div>
+					</div>`,
 			footer: `<div class="row text-center">
 						<div class="col-lg-6 col-md-9 p-1 my-3 mx-auto rounded-3" style="color: ${text_color}; background-color:#${constructor.primary_color}">${constructor.name || 'Missing'}</div>
 					</div>`,
@@ -571,38 +559,37 @@ app.get(`/drivers/profile/:identifier`, async c => {
 	}
 	race_results += `</tbody>
 			</table>`
-	const updateUserFields = [
-		{
-			id: `drivers.number`,
-			tag: 'input',
-			key: `number`,
-			type: 'number',
-			value: driver.number,
-			label: `Driver #`,
-			required: true,
-		},
-		{
-			id: `drivers.forename`,
-			tag: 'input',
-			key: `forename`,
-			type: 'text',
-			value: driver.forename,
-			label: `Forename`,
-			placeholder: 'Forename',
-			required: true,
-		},
-		{
-			id: `drivers.surname`,
-			tag: 'input',
-			key: `surname`,
-			type: 'text',
-			value: driver.surname,
-			label: `Surname`,
-			placeholder: 'Surname',
-			required: true,
-		}
-	]
-	const udpateUserForm = new Form({ action: `/drivers/profile/${driver.driverId}/update`, fields: updateUserFields })
+	const updateUserFields = [{
+		id: `drivers.number`,
+		tag: 'input',
+		key: `number`,
+		type: 'number',
+		value: driver.number,
+		label: `Driver #`,
+		required: true,
+	},{
+		id: `drivers.forename`,
+		tag: 'input',
+		key: `forename`,
+		type: 'text',
+		value: driver.forename,
+		label: `Forename`,
+		placeholder: 'Forename',
+		required: true,
+	},{
+		id: `drivers.surname`,
+		tag: 'input',
+		key: `surname`,
+		type: 'text',
+		value: driver.surname,
+		label: `Surname`,
+		placeholder: 'Surname',
+		required: true,
+	}]
+	const udpateUserForm = new Form({ 
+		action: `/drivers/profile/${driver.driverId}/update`, 
+		fields: updateUserFields 
+	})
 	const body = `
 		<div class="row mx-auto"
 			<div class="col-11">
@@ -650,12 +637,20 @@ app.get(`/drivers/profile/:identifier`, async c => {
 })
 
 app.get(`/drivers/profile/:driverId/update`, async c => {
-	const db = c.env.DB
 	const { driverId } = c.req.param()
 	const queries = c.req.queries()
 	let queryArr = Object.entries(queries).map(x => `${x[0]} = "${x[1]}"`)
 	let updateQuery = `UPDATE drivers SET ${queryArr.join(', ')} WHERE driverId = "${driverId}";`
-	db.prepare(updateQuery).run()	
+	c.env.DB.prepare(updateQuery).run()
+	return c.redirect(`/drivers/profile/${driverId}`)
+})
+
+app.post(`/drivers/profile/:driverId`, async c => {
+	const { driverId } = c.req.param()
+	const queries = c.req.queries()
+	let queryArr = Object.entries(queries).map(x => `${x[0]} = "${x[1]}"`)
+	let updateQuery = `UPDATE drivers SET ${queryArr.join(', ')} WHERE driverId = "${driverId}";`
+	c.env.DB.prepare(updateQuery).run()
 	return c.redirect(`/drivers/profile/${driverId}`)
 })
 
@@ -714,7 +709,7 @@ app.get(`/races/race/:race_name`, async c => {
 	const fetch2Data = await fetch(`https://en.wikipedia.org/w/api.php?action=parse&page=${race_name}&format=json`)
 	const jsonData = await fetch2Data.json()
 
-	const qualiTable = wikiTableToJSON('Qualifying_classification', jsonData);
+	const qualiTable = wikiTableToJSON('Qualifying_classification', jsonData)
 	let tableObjects = qualiTable.map(x => ({
 		position: Number(x[0]),
 		driver_number: Number(x[1]),
@@ -724,11 +719,11 @@ app.get(`/races/race/:race_name`, async c => {
 		q2: String(x[5]),
 		q3: String(x[6]),
 		grid: String(x[7]),
-	}));
-	tableObjects = tableObjects.filter(obj => !isNaN(obj.position) && !isNaN(obj.driver_number));
+	}))
+	tableObjects = tableObjects.filter(obj => !isNaN(obj.position) && !isNaN(obj.driver_number))
 	const qualisTable = new Table({ data: tableObjects })
 
-	const raceTable = wikiTableToJSON('Race_classification', jsonData);
+	const raceTable = wikiTableToJSON('Race_classification', jsonData)
 	tableObjects = raceTable.map(x => ({
 		position: Number(x[0]),
 		driver_number: Number(x[1]),
@@ -738,8 +733,8 @@ app.get(`/races/race/:race_name`, async c => {
 		time: String(x[5]),
 		grid: String(x[6]),
 		points: String(x[7]),
-	}));
-	tableObjects = tableObjects.filter(obj => !isNaN(obj.position) && !isNaN(obj.driver_number));
+	}))
+	tableObjects = tableObjects.filter(obj => !isNaN(obj.position) && !isNaN(obj.driver_number))
 	const racesTable = new Table({ data: tableObjects })
 
 	let heading = ''
@@ -771,7 +766,7 @@ app.get(`/races/:race_name`, async c => {
 	const { race_name } = c.req.param()
 	const fetch2Data = await fetch(`https://en.wikipedia.org/w/api.php?action=parse&page=${race_name}&format=json`)
 	const jsonData = await fetch2Data.json()
-	const raceClassificationTable = extractWikiTable('Race_classification', jsonData);
+	const raceClassificationTable = extractWikiTable('Race_classification', jsonData)
 	let heading = ''
 	for(const each of race_name.split('_')){
 		heading += `${each.capitalizeFirstChar()} `
@@ -867,63 +862,181 @@ app.get(`/api/${api_version[0]}/destroy/:table/:identifier/:value`, async c => {
 	return c.json({ response: { status: 201, ...response } })
 })
 
+function calculateAge(birthday) { // birthday is a date
+	const now = new Date(Date.now()).getFullYear()
+	const birthdate = Number(birthday)
+	return now - birthdate + 1
+}
+
+app.get(`/api/${api_version[0]}/races/addRace`, async c => {
+	const heading = 'Add Race'
+	const year = new Date().getFullYear()	
+	const yearsArray = Array.from(Array(calculateAge(1950)).keys()).map(x => new Date(Date.now()).getFullYear() - x)	// 1950, first year of F1 racing
+	const track = {}
+	// 	fp1_date	fp1_time	fp2_date	fp2_time	fp3_date	fp3_time	quali_date	quali_time	sprint_date	sprint_time
+	track.query = `SELECT DISTINCT races.name, circuits.circuitRef FROM races JOIN circuits ON  circuits.circuitId = races.circuitId WHERE year = ${year};`
+	track.prepare = await c.env.DB.prepare(track.query).all()
+	track.names = {}
+	for (const row of track.prepare.results) {
+		const key = row.circuitRef
+		track.names[key] = row.name
+	}
+	
+	let fields = [{
+		key: 'hr',
+		value: '<h3>Race Details</h3>'
+	}, {
+		id: 'race.name',
+		tag: 'select',
+		key: 'race.name',
+		value: c.req.param('race.name') || 'Bahrain',
+		label: 'Name',
+		required: true,
+		options: track.names
+	}, {
+		id: 'race.year',
+		tag: 'select',
+		key: 'race.year',
+		value: year,
+		label: 'Year',
+		required: true,
+		options: yearsArray
+	}, {
+		id: 'race.type',
+		tag: 'select',
+		key: 'race.type',
+		value: year,
+		label: 'Sprint / Grand Prix',
+		required: true,
+		options: {
+			'gp': 'Grand Prix',
+			'sprint': 'Sprint',
+		}
+	}, {
+		id: 'race.date',
+		tag: 'input',
+		type: 'date',
+		key: 'race.date',
+		value: year,
+		label: 'Date',
+		required: true,
+	}, {
+		id: 'race.time',
+		tag: 'input',
+		type: 'time',
+		key: 'race.time',
+		value: year,
+		label: 'Time',
+		required: true,
+	},]
+
+	const addRaceForm = new Form({
+		id: 'addRaceForm',
+		method: 'POST',
+		action: `/api/${api_version[0]}/races/addRace`,
+		fields: fields,
+	})
+
+	const { siteTitle } = c.env
+	const page = new Page({
+		siteTitle: siteTitle, brand: `Formula 1 OpenAPI`,
+		pageTitle: heading,
+		body: `<h1 class="text-center">${heading}</h1>
+			<div class="text-center mb-3 small">Submit this form to add a race to the roster.</div>
+		
+			<div class="text-center mx-auto">
+				${addRaceForm.render()}
+			</div>`
+	})
+	return c.html(page.render())
+})
+
+app.post(`/api/${api_version[0]}/races/addRace`, async c => {
+	const body = await c.req.parseBody()
+	return c.json({ response: body })
+})
+
+app.get(`/api/${api_version[0]}/mail/keyTest`, async c => {
+	const { SPARKPOST_API_KEY } = c.env
+	return c.json({api_key: SPARKPOST_API_KEY})
+})
+
+app.get(`/api/${api_version[0]}/mail/sendTest`, async c => {
+	const { SPARKPOST_API_KEY } = c.env
+//	console.log(`Sparkpost Key is ${SPARKPOST_API_KEY.substring(8)}`)
+// 	Send test email
+	const { subject = 'Test Email!', message = 'With a wonderful message attached!', to = 'blaine@blaineharper.com+danealue@blaineharper.com'}= c.req.queries()
+	const recipientsEmails = String(to).split("+")
+	const recipientsList = recipientsEmails.map(x => ({'address': x}))
+	const body = JSON.stringify({ "content": { "from": "blaine@blaineharper.com", "subject": String(subject), "text": String(message) }, "recipients": recipientsList })
+	let api_url = 'https://api.sparkpost.com/api/v1/transmissions'
+	const response = await fetch(api_url, {
+		method: 'POST',
+		headers: {
+			"Authorization": SPARKPOST_API_KEY,
+			"Content-Type": "application/json",
+		},
+		body: body
+	})
+	// return c.json({from: 'blaine@blaineharper.com', body: body, response: response.json()})
+	return c.redirect(`/`)
+})
+
 app.get(`/api/${api_version[0]}/races/addResults`, async c => {
-	const heading = 'Add Race Results'
+	const heading = 'Add Results'
 	const year = new Date().getFullYear()
 	const track = {}
-	let fields = []
-	track.query = `SELECT DISTINCT name FROM races WHERE year = ${year}`
+	track.query = `SELECT DISTINCT races.name, circuits.circuitRef FROM races JOIN circuits ON  circuits.circuitId = races.circuitId WHERE year = ${year};`
 	track.prepare = await c.env.DB.prepare(track.query).all()
-	track.options = {}
+	track.names = {}
 	for(const row of track.prepare.results){
-		const key = row.name.split(' ')[0]
-		track.options[key] = row.name
+		const key = row.circuitRef
+		track.names[key] = row.name
 	} 
-	
-	function calculateAge(birthday) { // birthday is a date
-		const now = new Date(Date.now()).getFullYear()
-		const birthdate = Number(birthday)
-		return now - birthdate + 1
-	}
 
-	function convertToObj(a, b) {
-		if (a.length != b.length ||
-			a.length == 0 ||
-			b.length == 0) {
-			return null;
-		}
-		let obj = {};
+	const yearsArray = Array.from(Array(calculateAge(1950)).keys()).map(x => new Date(Date.now()).getFullYear() - x)	// 1950, first year of F1 racing
 
-		// Using the foreach method
-		a.forEach((k, i) => { obj[k] = b[i] })
-		return obj;
-	}
-	const n10array = Array.from(Array(calculateAge(1950)).keys()).map(x => 2024 - x)	// 1950, first year of F1 racing
-	const n10obj = convertToObj(n10array, n10array)
-
-	fields = [
-		{
+	let fields = [{
+			key: 'hr',
+			value: '<h3>Race Details</h3>'
+		},{
 			id: 'race.name',
 			tag: 'select',
 			key: 'race.name',
 			value: c.req.param('race.name') || 'Bahrain',
 			label: 'Race Name',
 			required: true,
-			options: track.options
-		},
-		{
+			width: 'sm',
+			options: track.names
+		},{
 			id: 'race.year',
 			tag: 'select',
 			key: 'race.year',
 			value: year,
 			label: 'Year',
 			required: true,
-			options: n10obj
+			width: 'sm',
+			options: yearsArray
+		},{
+			id: 'race.type',
+			tag: 'select',
+			key: 'race.type',
+			value: year,
+			label: 'GP / Sprint',
+			required: true,
+			width: 'sm',
+			options: {
+				'gp': 'Grand Prix',
+				'sprint': 'Sprint',
+			}
+		},{
+			key: 'hr',
+			value: '<h3>Grid Results</h3><div class="small">Input the final position 1-20 for each driver.</div>'
 		},
 	]
 
-	const drivers = {}
-	drivers.query = `
+	const drivers = {
+		query: `
 		SELECT
 			drivers.driverId,
 			drivers.driverRef, 
@@ -944,23 +1057,56 @@ app.get(`/api/${api_version[0]}/races/addResults`, async c => {
 			drivers.driverId
 		ORDER BY 
 			drivers.driverId ASC
-		LIMIT 25;`
+		LIMIT 25;`,
+		names: {}
+	}
 
 	drivers.prepare = await c.env.DB.prepare(drivers.query).all()
-	
+
 	const { results } = drivers.prepare
-	for(const row of results){
+	for (const row of results) {
 		fields.push({
-			id: `driver_${row.driverRef}`,
+			id: `points_${row.constructorRef}_${row.driverRef}`,
 			tag: 'input',
-			key: `drivers_${row.driverRef}_points`,
+			key: `points.${row.constructorRef}.${row.driverRef}`,
 			type: 'number',
-			value: `0`,
-			label: `${row.forename} ${row.surname} (${row.name})`,
+			value: c.req.query(`points.${row.constructorRef}.${row.driverRef}`) || `0`,
+			pattern: '[1-9]|1[0-9]|20',
+			label: `Position`,
 			placeholder: '0',
 			required: true,
+			width: 'xs',
 		})
+		fields.push({
+			id: `times_${row.constructorRef}_${row.driverRef}`,
+			tag: 'input',
+			key: `times.${row.constructorRef}.${row.driverRef}`,
+			type: 'text',
+			value: c.req.query(`times.${row.constructorRef}.${row.driverRef}`) || `+1:19.215`,
+			pattern: '^[+-]?\d+:\d{1,2}\.\d{3}$',
+			label: `Time`,
+			placeholder: '0',
+			required: true,
+			width: 'sm',
+		})
+		drivers.names[row.driverRef] = `${row.forename.capitalizeFirstChar()} ${row.surname.capitalizeFirstChar()}`
 	}
+
+	const worldChampion = 'Max Verstappen'
+
+	fields.splice(4, 0, {
+		id: 'race.fastest_lap',
+		tag: 'select',
+		key: 'race.fastest_lap',
+		value: c.req.param('fastest_lap') || 
+			drivers.names[worldChampion] ||
+			Array.isArray(drivers.names) ? 
+				drivers.names.indexOf(worldChampion) :
+				worldChampion,
+		label: 'Fastest Lap',
+		required: true,
+		options: {'na': 'N/A', ...drivers.names}
+	})
 
 	const addResultForm = new Form({
 		id: 'addResultsForm',
@@ -973,6 +1119,7 @@ app.get(`/api/${api_version[0]}/races/addResults`, async c => {
 		siteTitle: `F1 openAPI`, brand: `Formula 1 OpenAPI`,
 		pageTitle: heading,
 		body: `<h1 class="text-center">${heading}</h1>
+			<div class="text-center mb-3 small">Submit this form to add the latest F1 Grand Prix results. Input 0 for DNF or absent.</div>
 		
 			<div class="text-center mx-auto">
 				${addResultForm.render()}
@@ -989,9 +1136,64 @@ const convertBodyToJSON = body => {
 	return body
 }
 
+const f1_points_map = [
+	0, 25, 18, 15, 12, 10, 8, 6, 4, 2, 1
+]
+
 app.post(`/api/${api_version[0]}/races/addResults`, async c => {	
 	const body = await c.req.parseBody()
-	return c.json(convertBodyToJSON(body))
+	const driver_points = {}
+	const constructor_points = {}
+	const race_details = {}
+	for (const each of Object.keys(body)) {
+		const value = body[each]
+		if (each.split('.')[0] == 'race') {
+			race_details[each.split('.')[1]] = String(body[each])
+			continue
+		}
+		const points = f1_points_map[Number(value)] || 0
+		if (each.split('.')[0] == 'points') {
+			const fastest_lap = Number(value) <= 10 && race_details.fastest_lap == each.split('.')[2] ? 1 : 0
+			constructor_points[each.split('.')[1]] = constructor_points[each.split('.')[1]] ? 
+				constructor_points[each.split('.')[1]] + points + fastest_lap :
+				points + fastest_lap
+			driver_points[each.split('.')[2]] = points + fastest_lap
+			continue
+		}
+	}
+
+	let sortable = []
+	for (var driver in driver_points) {
+		sortable.push([driver, driver_points[driver]])
+	}
+	sortable.sort(function (a, b) {
+		return b[1] - a[1]
+	})
+	const driver_standings = sortable.map(x => x[0])
+	sortable = []
+	for (var constructor in constructor_points) {
+		sortable.push([constructor, constructor_points[constructor]])
+	}
+	sortable.sort(function (a, b) {
+		return b[1] - a[1]
+	})
+	const constructor_standings = sortable.map(x => x[0])
+
+	const queryValues = {
+		races: [],
+		results: [],
+		driver_standings: [],
+		constructor_standings: [],
+	}
+
+//  INSERT INTO results ( raceId, driverId, constructorId, number, grid, position, positionText, positionOrder, points, laps, time, milliseconds, fastestLap, rank, fastestLapTime, fastestLapSpeed, statusId)
+// 		get results.resultsId
+//  INSERT INTO driver_standings ( raceId, driverId, points, position, positionText, wins )
+// 		get driver_standings.driverStandingsId
+//  INSERT INTO constructor_standings ( constructorId, points, position, positionText, wins )
+// 		get constructor_standings.constructorStandingsId
+
+	return c.json({ details: race_details, drivers: { points: driver_points, position: driver_standings }, constructors: { points: constructor_points, position: constructor_standings }} )
 })
 
 app.get(`/api/${api_version[0]}/drivers/:identifier`, async c => {
@@ -1064,7 +1266,7 @@ const JSONtoCSV = (dataArray) => {
 	let body = columns.join(', ')
 	for (const row of dataArray) {
 		let values = []
-		values.push(`${columns.map(col => `${row[col]}`).join(', ')},`);
+		values.push(`${columns.map(col => `${row[col]}`).join(', ')},`)
 		body += `\n${values.join(', ')}`
 	}
 	return body

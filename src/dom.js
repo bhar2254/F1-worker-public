@@ -136,14 +136,8 @@ export class Card extends HtmlElement {
 }
 
 export class FormInput extends HtmlElement {
-    static fieldWrapper = args => {
-        const _args = { ...args }
-        const id = _args.id || 'page_form'
-        const content = _args.content || ''
-        return `
-            <div id='${id}' class='mb-3 mx-auto mb-3 mx-auto col-sm-5 col-xs-11'>
-                ${content}
-            </div>`
+    static inputGroup = (inputArr) => {
+
     }
     constructor(args) {
         super(args)
@@ -155,6 +149,7 @@ export class FormInput extends HtmlElement {
         this.pattern = args.pattern || ''
         this.options = args.options || []
         this.value = args.value || ''
+        this.width = args.width || 'md'
         this.placeholder = args.placeholder || ''
     }
     set key(key) {
@@ -184,20 +179,49 @@ export class FormInput extends HtmlElement {
     get type() {
         return this._type
     }
+    set width(width) {
+        const widths = {
+            'xs': 'col-sm-2 col-xs-11',
+            'sm': 'col-sm-4 col-xs-11',
+            'md': 'col-sm-5 col-xs-11',
+            'lg': 'col-11',
+        }
+        this._width = widths[width] || width || ''
+        
+    }
+    get width() {
+        return this._width
+    }
+    fieldWrapper(args) {
+        const _args = { ...args }
+        const id = _args.id || 'page_form'
+        const content = _args.content || ''
+        return `
+            <div id='${id}' class='mb-3 mx-auto mb-3 mx-auto ${this.width}'>
+                ${content}
+            </div>`
+    }
     render() {
         const fieldTypes = {
             'select': () => {
                 let content = `
                     <label class='border-0' id='${this.key}_label'>${this.label}</label>
                     <select id='${this.key}_field' name='${this.key}' class='form-control border' style='cursor:auto;box-sizing:border-box;height:40.5px' type='select'>`
-                Object.entries(this.options).forEach(([key, value]) => {
-                  const isActive = value == this.value ? ' active' : ''
-                  content += `
-                      <option value='${key}'${isActive}>${value}</option>`
-                })
+                if(!Array.isArray(this.options))
+                    Object.entries(this.options).forEach(([key, value]) => {
+                        const isActive = key == this.value || value == this.value ? ' selected' : ''
+                        content += `
+                            <option value='${key}'${isActive}>${value}</option>`
+                    })  
+                if(Array.isArray(this.options))
+                    this.options.forEach((each) => {
+                        const isActive = each == this.value || each == this.value ? ' selected' : ''
+                        content += `
+                            <option value='${each}'${isActive}>${each}</option>`
+                    })
                 content += `
                     </select>`
-                return FormInput.fieldWrapper({ id: this.key, content: content })
+                return this.fieldWrapper({ id: this.key, content: content })
             },
             'textarea': () => {
                 const { id, key, value, label, placeholder = '' } = this
@@ -206,7 +230,7 @@ export class FormInput extends HtmlElement {
                     <textarea style='min-height:7.55rem;' rows='4' id='${id}_field' name='${key}' class='form-control border' placeholder='${placeholder}'>
                         ${value}
                     </textarea>`
-                return FormInput.fieldWrapper({ id: id, content: content })
+                return this.fieldWrapper({ id: id, content: content })
             },
             'input': () => {
                 const { id, key, value = '', label, type, placeholder = '', pattern = 0 } = this
@@ -217,7 +241,7 @@ export class FormInput extends HtmlElement {
                     <script>
                         document.getElementById("${id}_field").value = "${value}";
                     </script>`
-                return FormInput.fieldWrapper({ id: id, content: content })
+                return this.fieldWrapper({ id: id, content: content })
             }
         }
         return fieldTypes[this.tag]()
@@ -234,6 +258,7 @@ export class Form extends HtmlElement {
         this.method = this._args.method || 'GET'
         this.action = this._args.action || ''
         this.fields = this._args.fields || []
+        this.columns = this._args.columns || 2
         delete this._args
     }
     addField = field => {
@@ -243,7 +268,19 @@ export class Form extends HtmlElement {
         let form_html = `    
             <form id='${this.id}' class='mx-auto col-lg-9 col-md-11 col-sm-12' action='${this.action}' method='${this.method}'>
                 <div class='row'>`
+        const additional_fields = {
+            'hr': (x) => {
+                return `${x.value}<hr>`
+            },
+            'br': (x) => {
+                return `${x.value}<br>`
+            }
+        }
         for (const each of this.fields) {
+            if(Object.keys(additional_fields).includes(each.key)){
+                form_html += additional_fields[each.key](each)
+                continue
+            }
             const formInput = new FormInput(each)
             form_html += formInput.render()
         }
